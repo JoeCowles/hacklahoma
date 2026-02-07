@@ -1,6 +1,4 @@
-Return ONLY JSON: {"code": "string"}
+Return ONLY your code in a MARKDOWN BLOCK.
 
-Generate a minimal Three.js scene snippet (ESM) that illustrates the concept.
-
-Concept:
+Generate a visual tool to help a learner understand this concept:
 {{concept}}
