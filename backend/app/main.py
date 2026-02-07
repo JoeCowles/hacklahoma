@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
+from .services.gemini import GeminiClient
+from .services.elevenlabs import ElevenLabsClient
+# from .services.google_search import search_youtube_via_google
 from .schemas import (
     TranscriptChunk,
     Concept,
@@ -25,6 +28,7 @@ from .schemas import (
     OnboardingRequest,
     OnboardingResponse,
 )
+from pathlib import Path
 
 app = FastAPI(title="LearnStream API", version="0.1.0")
 
@@ -43,6 +47,24 @@ SHARES: dict[str, ShareResponse] = {}
 USERS: dict[str, dict[str, str]] = {}
 SESSIONS: dict[str, str] = {}
 
+gemini_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_model)
+elevenlabs_client = ElevenLabsClient(settings.elevenlabs_api_key or "")
+# youtube_client = YouTubeClient() # Initialized later or on demand if needed, but here we likely want it global or dependency injected
+from .services.youtube import YouTubeClient
+youtube_client = YouTubeClient()
+
+PROMPT_DIR = Path(__file__).parent / "prompts"
+PROMPT_CACHE: dict[str, str] = {}
+
+
+def load_prompt(name: str) -> str:
+    if name in PROMPT_CACHE:
+        return PROMPT_CACHE[name]
+    path = PROMPT_DIR / f"{name}.md"
+    text = path.read_text(encoding="utf-8")
+    PROMPT_CACHE[name] = text
+    return text
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -52,46 +74,87 @@ def health() -> dict[str, str]:
 @app.post("/concepts/extract", response_model=ConceptExtractionResponse)
 def extract_concepts(payload: TranscriptChunk) -> ConceptExtractionResponse:
     """
-    Placeholder extractor. Replace with Gemini calls and your push_concept tool.
+    Gemini-backed concept extraction. Returns new concepts as JSON list.
     """
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="Transcript chunk is empty")
 
-    # naive demo: split on sentences, pick first 2 words as concept
-    words = payload.text.split()
-    keyword = " ".join(words[:2]) if len(words) >= 2 else payload.text
-    concept = Concept(keyword=keyword, stem_concept=True, source_chunk_id=payload.chunk_id)
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=500, detail="Gemini API key is not configured")
 
-    CONCEPTS.setdefault(payload.lecture_id, []).append(concept)
-    return ConceptExtractionResponse(lecture_id=payload.lecture_id, new_concepts=[concept])
+    prompt_template = load_prompt("concept_extraction")
+    prompt = (
+        prompt_template.replace("{{previous_context}}", payload.previous_context or "")
+        .replace("{{transcript_chunk}}", payload.text)
+    )
+
+    try:
+        data = gemini_client.generate_json(prompt)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Gemini error: {exc}") from exc
+
+    raw_concepts = (data or {}).get("concepts", []) if isinstance(data, dict) else data
+    new_concepts: list[Concept] = []
+    for item in raw_concepts or []:
+        keyword = (item or {}).get("keyword")
+        if not keyword:
+            continue
+        concept = Concept(
+            keyword=str(keyword),
+            stem_concept=bool((item or {}).get("stem_concept", False)),
+            source_chunk_id=payload.chunk_id,
+        )
+        new_concepts.append(concept)
+
+    if not new_concepts:
+        raise HTTPException(status_code=502, detail="Gemini returned no concepts")
+
+    CONCEPTS.setdefault(payload.lecture_id, []).extend(new_concepts)
+    return ConceptExtractionResponse(lecture_id=payload.lecture_id, new_concepts=new_concepts)
 
 
 @app.post("/concepts/{lecture_id}/walkthrough", response_model=WalkthroughResponse)
 def create_walkthrough(lecture_id: str, payload: WalkthroughRequest) -> WalkthroughResponse:
-    return WalkthroughResponse(
-        concept=payload.concept,
-        status="queued",
-        content=None,
-    )
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=500, detail="Gemini API key is not configured")
+
+    prompt = load_prompt("walkthrough").replace("{{concept}}", payload.concept)
+    try:
+        data = gemini_client.generate_json(prompt)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Gemini error: {exc}") from exc
+
+    content = (data or {}).get("content") if isinstance(data, dict) else None
+    if not content:
+        raise HTTPException(status_code=502, detail="Gemini returned empty walkthrough")
+    return WalkthroughResponse(concept=payload.concept, status="ready", content=content)
 
 
 @app.post("/animations/generate", response_model=AnimationResponse)
 def generate_animation(payload: AnimationRequest) -> AnimationResponse:
-    return AnimationResponse(concept=payload.concept, status="queued", asset_url=None)
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=500, detail="Gemini API key is not configured")
+
+    prompt = load_prompt("animation").replace("{{concept}}", payload.concept)
+    try:
+        data = gemini_client.generate_json(prompt)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Gemini error: {exc}") from exc
+
+    code = (data or {}).get("code") if isinstance(data, dict) else None
+    if not code:
+        raise HTTPException(status_code=502, detail="Gemini returned empty code")
+    return AnimationResponse(concept=payload.concept, status="ready", asset_url=None, code=code)
 
 
 @app.post("/videos/search", response_model=VideoSearchResponse)
 def search_videos(payload: VideoSearchRequest) -> VideoSearchResponse:
-    # Placeholder. Replace with YouTube search via API or custom scraper.
-    results = [
-        VideoResult(
-            title=f"{payload.query} overview",
-            url="https://youtube.com",
-            channel="Example",
-            published_at=None,
-        )
-    ]
-    return VideoSearchResponse(query=payload.query, results=results[: payload.limit])
+    try:
+        items = youtube_client.search(payload.query, payload.limit)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Google search error: {exc}") from exc
+    results = [VideoResult(**item) for item in items]
+    return VideoSearchResponse(query=payload.query, results=results)
 
 
 @app.get("/credits/{user_id}", response_model=CreditBalance)

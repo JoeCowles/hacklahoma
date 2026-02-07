@@ -6,8 +6,12 @@ class Settings(BaseSettings):
 
     environment: str = "dev"
     gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash-lite"
+    google_api_key: str = ""
+    google_search_cx: str = ""
     elevenlabs_api_key: str | None = None
-    youtube_api_key: str | None = None
+    elevenlabs_voice_id: str | None = None
+    elevenlabs_tts_model_id: str = "eleven_multilingual_v2"
     vector_db_url: str | None = None
     credit_start_balance: int = 50
 

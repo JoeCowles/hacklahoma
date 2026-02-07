@@ -45,6 +45,7 @@ class AnimationResponse(BaseModel):
     concept: str
     status: str
     asset_url: str | None = None
+    code: str | None = None
 
 
 class WalkthroughRequest(BaseModel):

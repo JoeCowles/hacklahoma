@@ -1,21 +1,68 @@
-# LearnStream Scaffold
+# Hacklahoma Project
 
-This repo scaffolds the LearnStream platform with a Next.js frontend and a FastAPI backend.
+A modern video generation and search application built with Next.js and FastAPI.
 
-## Services
-- `frontend`: Next.js 14 app router UI
-- `backend`: FastAPI API with stubbed endpoints for transcript ingestion, concept extraction, media generation, and credits
+## Tech Stack
 
-## Local Dev (no Docker)
-1. Frontend:
-   - `cd /Users/joecowles/Desktop/hacklahoma/frontend`
-   - `npm install`
-   - `npm run dev`
-2. Backend:
-   - `cd /Users/joecowles/Desktop/hacklahoma/backend`
-   - `python -m venv .venv && source .venv/bin/activate`
-   - `pip install -r requirements.txt`
-   - `uvicorn app.main:app --reload`
+### Frontend
+- **Framework**: Next.js 14 (App Router)
+- **Styling**: Tailwind CSS, Lucide React
+- **State Management**: React Hooks
+
+### Backend
+- **Framework**: FastAPI (Python)
+- **AI/LLM**: Google Gemini API (`gemini-2.5-flash-lite`)
+  - Used for generating video scripts.
+  - Used for retrieving relevant YouTube video links (replacing traditional scraping).
+- **Voice Synthesis**: ElevenLabs API
+- **Database**: (Planned) Vector DB
+
+## Prerequisite
+
+- Node.js 18+
+- Python 3.10+
+- Google Gemini API Key
+
+## Setup
+
+### 1. Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Create a `.env` file in `backend/`:
+```env
+environment=dev
+gemini_api_key=YOUR_GEMINI_API_KEY
+gemini_model=gemini-2.5-flash-lite
+elevenlabs_api_key=YOUR_ELEVENLABS_KEY
+elevenlabs_voice_id=YOUR_VOICE_ID
+```
+
+Start the server:
+```bash
+./scripts/start_backend.sh
+# Server runs at http://localhost:8000
+```
+
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# App runs at http://localhost:3000
+```
+
+## Features
+
+- **Video Search**: Generates relevant YouTube video links using Gemini AI matching.
+- **Script Generation**: Creates educational scripts based on search queries.
+- **Audio Generation**: Converts scripts to audio using ElevenLabs.
 
 ## Docker
 - Build and run:
@@ -23,8 +70,6 @@ This repo scaffolds the LearnStream platform with a Next.js frontend and a FastA
   - `docker compose up --build`
 
 Frontend: `http://localhost:3000`
-Backend: `http://localhost:8000`
-
 ## API Endpoints (stubbed)
 - `POST /concepts/extract`
 - `POST /concepts/{lecture_id}/walkthrough`
