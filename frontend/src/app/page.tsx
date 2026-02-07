@@ -196,8 +196,8 @@ export default function LectureAssistantDashboard() {
                   <div key={lecture.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group">
                     <div className="flex items-start justify-between mb-4">
                       <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${lecture.status === 'Live' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                          lecture.status === 'Upcoming' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                            'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
+                        lecture.status === 'Upcoming' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                          'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
                         }`}>
                         {lecture.status}
                       </div>
@@ -393,8 +393,8 @@ export default function LectureAssistantDashboard() {
                         key={concept.id}
                         onClick={() => handleConceptClick(concept.id)}
                         className={`p-3 rounded-lg border shadow-sm cursor-pointer transition-all hover:shadow-md ${selectedConcept?.id === concept.id
-                            ? 'bg-primary text-white border-primary shadow-primary/20 ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900'
-                            : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 hover:border-primary/50'
+                          ? 'bg-primary text-white border-primary shadow-primary/20 ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900'
+                          : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 hover:border-primary/50'
                           }`}
                       >
                         <div className="flex items-center justify-between mb-1">
