@@ -37,150 +37,103 @@ export default function LectureAssistantDashboard() {
               <span>Export Transcript</span>
             </button>
             <div className="size-10 rounded-full overflow-hidden border-2 border-primary/20 bg-gray-100 dark:bg-slate-800">
-              <img alt="User profile avatar icon" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIVAqHgSOAHJfcUBhDu4ipaIfZWLXUh9AwBZbW8WXhiG3FtXZgvj7FDR7EScQVqFCgU0vlaLru9MFcN66GzsqByoz6PviTBNeaZ57fWVwADFEI-5vwP2ZE9zZPVMM7rmVE16azyPAXXPwq5DQ9n0PbFu7MG4NmlajV-CEc2_oGilRniLgCMcqTznLKadjhdNrJoukLBPM8g12oTorLRzMNTZ-9R61EiHqmIhxW0_o61Vnz5QhKzQT4IXWCSL4xZEpq1k-OlydCkSsZ"/>
+              <img alt="User profile avatar icon" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIVAqHgSOAHJfcUBhDu4ipaIfZWLXUh9AwBZbW8WXhiG3FtXZgvj7FDR7EScQVqFCgU0vlaLru9MFcN66GzsqByoz6PviTBNeaZ57fWVwADFEI-5vwP2ZE9zZPVMM7rmVE16azyPAXXPwq5DQ9n0PbFu7MG4NmlajV-CEc2_oGilRniLgCMcqTznLKadjhdNrJoukLBPM8g12oTorLRzMNTZ-9R61EiHqmIhxW0_o61Vnz5QhKzQT4IXWCSL4xZEpq1k-OlydCkSsZ" />
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Dashboard Layout */}
-      <main className="flex-1 max-w-[1600px] mx-auto w-full p-6 grid grid-cols-12 gap-6 overflow-hidden h-[calc(100vh-4rem)]">
+      {/* Main Dashboard Layout */}
+      <main className="flex-1 w-full flex overflow-hidden h-[calc(100vh-4rem)]">
         {/* Left Section: Transcription */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] flex flex-col flex-1 overflow-hidden border border-gray-100 dark:border-slate-800">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">description</span>
-                <h2 className="font-bold text-lg">Lecture Transcription</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-xs font-medium hover:bg-gray-200 transition-colors">
-                  <span className="material-symbols-outlined text-base">pause</span>
-                  Pause Scroll
-                </button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-xs font-medium hover:bg-gray-200 transition-colors">
-                  <span className="material-symbols-outlined text-base">text_increase</span>
-                  Font Size
-                </button>
-              </div>
+        <div className="flex-[3] flex flex-col border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 sticky top-0 z-10">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">description</span>
+              <h2 className="font-bold text-lg">Lecture Transcription</h2>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6">
-              <div className="flex gap-4">
-                <span className="text-xs font-mono text-[#616f89] dark:text-slate-500 pt-1 shrink-0">00:00:15</span>
-                <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">Welcome everyone. Today we are diving into the fundamentals of quantum mechanics, specifically focusing on the Schrödinger Equation and its implications for particle physics. Before we start, let's look at the historical context of the wave-particle duality.</p>
-              </div>
-              <div className="flex gap-4">
-                <span className="text-xs font-mono text-[#616f89] dark:text-slate-500 pt-1 shrink-0">00:05:42</span>
-                <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">The wave-particle duality suggests that every particle or quantum entity may be described as either a particle or a wave. It expresses the inability of the classical concepts 'particle' or 'wave' to fully describe the behavior of quantum-scale objects.</p>
-              </div>
-              <div className="flex gap-4">
-                <span className="text-xs font-mono text-primary font-bold pt-1 shrink-0">00:44:15</span>
-                <div className="flex flex-col gap-2">
-                  <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">...and so, as we move further into the Schrödinger equation, we must account for the probability density of a particle's position. This is where the concept of the wave function becomes critical. In a macroscopic scale, these effects are negligible, but at the atomic level, they govern everything.</p>
-                  <div className="flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-primary animate-pulse"></span>
-                    <span className="text-sm italic text-[#616f89] dark:text-slate-400">Assistant is transcribing live...</span>
-                  </div>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold hover:bg-green-200 transition-colors">
+                <span className="material-symbols-outlined text-base">play_arrow</span>
+                Start Transcription
+              </button>
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold hover:bg-red-200 transition-colors">
+                <span className="material-symbols-outlined text-base">stop</span>
+                End Transcription
+              </button>
+              <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1"></div>
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-xs font-medium hover:bg-gray-200 transition-colors">
+                <span className="material-symbols-outlined text-base">text_increase</span>
+                Font Size
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6">
+            <div className="flex gap-4">
+              <span className="text-xs font-mono text-[#616f89] dark:text-slate-500 pt-1 shrink-0">00:00:15</span>
+              <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">Welcome everyone. Today we are diving into the fundamentals of quantum mechanics, specifically focusing on the Schrödinger Equation and its implications for particle physics. Before we start, let's look at the historical context of the wave-particle duality.</p>
+            </div>
+            <div className="flex gap-4">
+              <span className="text-xs font-mono text-[#616f89] dark:text-slate-500 pt-1 shrink-0">00:05:42</span>
+              <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">The wave-particle duality suggests that every particle or quantum entity may be described as either a particle or a wave. It expresses the inability of the classical concepts 'particle' or 'wave' to fully describe the behavior of quantum-scale objects.</p>
+            </div>
+            <div className="flex gap-4">
+              <span className="text-xs font-mono text-primary font-bold pt-1 shrink-0">00:44:15</span>
+              <div className="flex flex-col gap-2">
+                <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">...and so, as we move further into the Schrödinger equation, we must account for the probability density of a particle's position. This is where the concept of the wave function becomes critical. In a macroscopic scale, these effects are negligible, but at the atomic level, they govern everything.</p>
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-primary animate-pulse"></span>
+                  <span className="text-sm italic text-[#616f89] dark:text-slate-400">Assistant is transcribing live...</span>
                 </div>
               </div>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4">
-              <div className="flex-1 h-2 bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="bg-primary h-full w-[85%]"></div>
-              </div>
-              <span className="text-xs font-medium text-[#616f89] dark:text-slate-400 whitespace-nowrap">85% Session Complete</span>
             </div>
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-hidden">
-          {/* Key Concepts Box */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-4">
+        {/* Right Sidebar: Key Concepts */}
+        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-950/50 min-w-[300px]">
+          <div className="p-6 h-full flex flex-col gap-4">
+            <div className="flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">lightbulb</span>
                 <h2 className="font-bold">Key Concepts</h2>
               </div>
               <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">AI Detected</span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-sm font-medium border border-gray-100 dark:border-slate-700 flex items-center gap-2">
-                Wave-Particle Duality
-                <span className="material-symbols-outlined text-xs text-[#616f89]">auto_awesome</span>
-              </span>
-              <span className="px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-sm font-medium border border-gray-100 dark:border-slate-700">Quantum Mechanics</span>
-              <span className="px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-sm font-medium border border-gray-100 dark:border-slate-700">Schrödinger Equation</span>
-              <span className="px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-sm font-medium border border-gray-100 dark:border-slate-700">Particle Physics</span>
-              <span className="px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-sm font-medium border border-gray-100 dark:border-slate-700">Classical Concepts</span>
-              <span className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-bold border border-primary/20">Wave Function</span>
-            </div>
-          </div>
 
-          {/* Tabbed Interface (Resources & Messages) */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col flex-1 overflow-hidden">
-            <div className="flex border-b border-gray-100 dark:border-slate-800">
-              <button className="flex-1 py-4 text-sm font-bold border-b-2 border-primary text-primary">Resources</button>
-              <button className="flex-1 py-4 text-sm font-bold text-[#616f89] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">Messages (12)</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              {/* Resources List */}
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-background-light/30 dark:bg-slate-800/30 group">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center">
-                        <span className="material-symbols-outlined">picture_as_pdf</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold truncate">Lecture_Slides_W4.pdf</p>
-                        <p className="text-[10px] text-[#616f89] dark:text-slate-400 uppercase font-bold tracking-wider">PDF • 4.2 MB</p>
-                      </div>
-                    </div>
-                    <button className="text-[#616f89] dark:text-slate-400 hover:text-primary">
-                      <span className="material-symbols-outlined text-xl">download</span>
-                    </button>
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="flex flex-col gap-2">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm">Wave-Particle Duality</span>
+                    <span className="material-symbols-outlined text-xs text-primary">auto_awesome</span>
                   </div>
+                  <p className="text-xs text-[#616f89] dark:text-slate-400 line-clamp-2">The concept that every particle or quantum entity may be described as either a particle or a wave.</p>
                 </div>
-                <div className="p-3 rounded-lg border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-background-light/30 dark:bg-slate-800/30">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center">
-                        <span className="material-symbols-outlined">link</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold truncate">Schrödinger Simulation</p>
-                        <p className="text-[10px] text-[#616f89] dark:text-slate-400 uppercase font-bold tracking-wider">EXTERNAL LINK</p>
-                      </div>
-                    </div>
-                    <button className="text-[#616f89] dark:text-slate-400 hover:text-primary">
-                      <span className="material-symbols-outlined text-xl">open_in_new</span>
-                    </button>
-                  </div>
+
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <span className="font-semibold text-sm">Quantum Mechanics</span>
                 </div>
-                <div className="p-3 rounded-lg border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-background-light/30 dark:bg-slate-800/30">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded bg-orange-50 dark:bg-orange-900/20 text-orange-500 flex items-center justify-center">
-                        <span className="material-symbols-outlined">menu_book</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold truncate">Reading List - Week 4</p>
-                        <p className="text-[10px] text-[#616f89] dark:text-slate-400 uppercase font-bold tracking-wider">DOCS • 1.1 MB</p>
-                      </div>
-                    </div>
-                    <button className="text-[#616f89] dark:text-slate-400 hover:text-primary">
-                      <span className="material-symbols-outlined text-xl">download</span>
-                    </button>
-                  </div>
+
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <span className="font-semibold text-sm">Schrödinger Equation</span>
+                </div>
+
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <span className="font-semibold text-sm">Particle Physics</span>
+                </div>
+
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <span className="font-semibold text-sm">Classical Concepts</span>
+                </div>
+
+                <div className="p-3 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/20 shadow-sm">
+                  <span className="font-semibold text-sm text-primary">Wave Function</span>
+                  <p className="text-xs text-[#616f89] dark:text-slate-400 mt-1">Critical concept for probability density of a particle's position.</p>
                 </div>
               </div>
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-slate-800">
-              <button className="w-full py-2.5 bg-background-light dark:bg-slate-800 text-xs font-bold text-[#111318] dark:text-white rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined text-base">upload_file</span>
-                Upload New Resource
-              </button>
             </div>
           </div>
         </div>
