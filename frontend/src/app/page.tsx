@@ -1,3 +1,5 @@
+import { TranscriptionCard } from "../components/TranscriptionCard";
+
 export default function LectureAssistantDashboard() {
   return (
     <>
@@ -34,10 +36,10 @@ export default function LectureAssistantDashboard() {
             </div>
             <button className="flex items-center gap-2 px-4 h-10 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
               <span className="material-symbols-outlined text-lg">download</span>
-              <span>Export Transcript</span>
+              <span>Export</span>
             </button>
             <div className="size-10 rounded-full overflow-hidden border-2 border-primary/20 bg-gray-100 dark:bg-slate-800">
-              <img alt="User profile avatar icon" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIVAqHgSOAHJfcUBhDu4ipaIfZWLXUh9AwBZbW8WXhiG3FtXZgvj7FDR7EScQVqFCgU0vlaLru9MFcN66GzsqByoz6PviTBNeaZ57fWVwADFEI-5vwP2ZE9zZPVMM7rmVE16azyPAXXPwq5DQ9n0PbFu7MG4NmlajV-CEc2_oGilRniLgCMcqTznLKadjhdNrJoukLBPM8g12oTorLRzMNTZ-9R61EiHqmIhxW0_o61Vnz5QhKzQT4IXWCSL4xZEpq1k-OlydCkSsZ"/>
+              <img alt="User profile avatar icon" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIVAqHgSOAHJfcUBhDu4ipaIfZWLXUh9AwBZbW8WXhiG3FtXZgvj7FDR7EScQVqFCgU0vlaLru9MFcN66GzsqByoz6PviTBNeaZ57fWVwADFEI-5vwP2ZE9zZPVMM7rmVE16azyPAXXPwq5DQ9n0PbFu7MG4NmlajV-CEc2_oGilRniLgCMcqTznLKadjhdNrJoukLBPM8g12oTorLRzMNTZ-9R61EiHqmIhxW0_o61Vnz5QhKzQT4IXWCSL4xZEpq1k-OlydCkSsZ" />
             </div>
           </div>
         </div>
@@ -47,50 +49,7 @@ export default function LectureAssistantDashboard() {
       <main className="flex-1 max-w-[1600px] mx-auto w-full p-6 grid grid-cols-12 gap-6 overflow-hidden h-[calc(100vh-4rem)]">
         {/* Left Section: Transcription */}
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] flex flex-col flex-1 overflow-hidden border border-gray-100 dark:border-slate-800">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">description</span>
-                <h2 className="font-bold text-lg">Lecture Transcription</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-xs font-medium hover:bg-gray-200 transition-colors">
-                  <span className="material-symbols-outlined text-base">pause</span>
-                  Pause Scroll
-                </button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background-light dark:bg-slate-800 text-xs font-medium hover:bg-gray-200 transition-colors">
-                  <span className="material-symbols-outlined text-base">text_increase</span>
-                  Font Size
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6">
-              <div className="flex gap-4">
-                <span className="text-xs font-mono text-[#616f89] dark:text-slate-500 pt-1 shrink-0">00:00:15</span>
-                <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">Welcome everyone. Today we are diving into the fundamentals of quantum mechanics, specifically focusing on the Schrödinger Equation and its implications for particle physics. Before we start, let's look at the historical context of the wave-particle duality.</p>
-              </div>
-              <div className="flex gap-4">
-                <span className="text-xs font-mono text-[#616f89] dark:text-slate-500 pt-1 shrink-0">00:05:42</span>
-                <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">The wave-particle duality suggests that every particle or quantum entity may be described as either a particle or a wave. It expresses the inability of the classical concepts 'particle' or 'wave' to fully describe the behavior of quantum-scale objects.</p>
-              </div>
-              <div className="flex gap-4">
-                <span className="text-xs font-mono text-primary font-bold pt-1 shrink-0">00:44:15</span>
-                <div className="flex flex-col gap-2">
-                  <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">...and so, as we move further into the Schrödinger equation, we must account for the probability density of a particle's position. This is where the concept of the wave function becomes critical. In a macroscopic scale, these effects are negligible, but at the atomic level, they govern everything.</p>
-                  <div className="flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-primary animate-pulse"></span>
-                    <span className="text-sm italic text-[#616f89] dark:text-slate-400">Assistant is transcribing live...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4">
-              <div className="flex-1 h-2 bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="bg-primary h-full w-[85%]"></div>
-              </div>
-              <span className="text-xs font-medium text-[#616f89] dark:text-slate-400 whitespace-nowrap">85% Session Complete</span>
-            </div>
-          </div>
+          <TranscriptionCard />
         </div>
 
         {/* Right Sidebar */}
