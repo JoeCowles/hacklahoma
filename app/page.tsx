@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { LoginScreen } from "@/components/login-screen";
-import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { TranscriptionPanel } from "@/components/transcription-panel";
-import { LectureInfoPanel } from "@/components/lecture-info-panel";
+import { Dashboard } from "@/components/dashboard";
 
 export default function Home() {
   const [user, setUser] = useState<string | null>(null);
@@ -14,10 +12,6 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <DashboardSidebar userName={user} onLogout={() => setUser(null)} />
-      <TranscriptionPanel />
-      <LectureInfoPanel />
-    </div>
+    <Dashboard userName={user} onLogout={() => setUser(null)} />
   );
 }

@@ -3,44 +3,39 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: #fafafa;
-  --color-foreground: #0a0a0a;
+  --color-background: #fafaf9;
+  --color-foreground: #1c1917;
   --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
+  --color-card-foreground: #1c1917;
   --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
-  --color-primary: #0a0a0a;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #f0f0f0;
-  --color-secondary-foreground: #171717;
-  --color-muted: #f0f0f0;
-  --color-muted-foreground: #737373;
-  --color-accent: #f0f0f0;
-  --color-accent-foreground: #171717;
+  --color-popover-foreground: #1c1917;
+  --color-primary: #1c1917;
+  --color-primary-foreground: #fafaf9;
+  --color-secondary: #f5f5f4;
+  --color-secondary-foreground: #292524;
+  --color-muted: #f5f5f4;
+  --color-muted-foreground: #78716c;
+  --color-accent: #f5f5f4;
+  --color-accent-foreground: #292524;
   --color-destructive: #dc2626;
-  --color-destructive-foreground: #fafafa;
-  --color-border: #e5e5e5;
-  --color-input: #e5e5e5;
-  --color-ring: #0a0a0a;
-  --color-sidebar-background: #ffffff;
-  --color-sidebar-foreground: #404040;
-  --color-sidebar-primary: #0a0a0a;
-  --color-sidebar-primary-foreground: #fafafa;
-  --color-sidebar-accent: #f0f0f0;
-  --color-sidebar-accent-foreground: #171717;
-  --color-sidebar-border: #e5e5e5;
-  --color-sidebar-ring: #0a0a0a;
+  --color-destructive-foreground: #fafaf9;
+  --color-border: #e7e5e4;
+  --color-input: #e7e5e4;
+  --color-ring: #1c1917;
   --color-brand: #2563eb;
   --color-brand-foreground: #ffffff;
-  --color-surface: #f5f5f5;
-  --color-surface-foreground: #404040;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --color-brand-muted: #dbeafe;
+  --color-surface: #f5f5f4;
+  --color-surface-foreground: #57534e;
+  --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 @layer base {
@@ -55,20 +50,33 @@
   }
 }
 
-/* Custom scrollbar */
+/* Smooth scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 9999px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }
