@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: 'Lecture Assistant Dashboard',
   description: 'Lecture Assistant Dashboard for Quantum Physics 101',
