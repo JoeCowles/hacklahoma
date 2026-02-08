@@ -90,6 +90,46 @@ class ShareResponse(BaseModel):
     status: str
 
 
+class CreateLectureRequest(BaseModel):
+    professor: str
+    school: str
+    class_name: str
+    class_time: str
+    student_id: str
+
+
+class Lecture(BaseModel):
+    id: str
+    professor: str
+    school: str
+    class_name: str
+    class_time: str
+    student_id: str
+
+
+class LectureListResponse(BaseModel):
+    lectures: list[Lecture]
+
+
+class CreateClassRequest(BaseModel):
+    name: str
+    professor: str
+    school: str
+    class_time: str
+
+
+class Class(BaseModel):
+    id: str
+    name: str
+    professor: str
+    school: str
+    class_time: str
+
+
+class ClassListResponse(BaseModel):
+    classes: list[Class]
+
+
 class AuthRegisterRequest(BaseModel):
     email: str
     password: str

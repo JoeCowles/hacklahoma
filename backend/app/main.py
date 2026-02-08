@@ -36,6 +36,9 @@ from .schemas import (
     CreateLectureRequest,
     Lecture,
     LectureListResponse,
+    CreateClassRequest,
+    Class,
+    ClassListResponse,
 )
 from pymongo import MongoClient
 from pathlib import Path
@@ -471,3 +474,36 @@ def get_lectures() -> LectureListResponse:
     # MongoDB returns _id, we need to map it or ignore it since we store "id" explicitly
     lectures = [Lecture(**l) for l in lectures_cursor]
     return LectureListResponse(lectures=lectures)
+
+
+@app.post("/classes", response_model=Class)
+def create_class(payload: CreateClassRequest) -> Class:
+    import uuid
+    class_id = f"class_{uuid.uuid4()}"
+    
+    new_class = {
+        "id": class_id,
+        "name": payload.name,
+        "professor": payload.professor,
+        "school": payload.school,
+        "class_time": payload.class_time,
+    }
+
+    if db is not None:
+        db.classes.insert_one(new_class.copy())
+    else:
+        # Fallback for dev without DB
+        print("Warning: DB not available, class not persisted")
+    
+    return Class(**new_class)
+
+
+@app.get("/classes", response_model=ClassListResponse)
+def get_classes() -> ClassListResponse:
+    if db is None:
+         # Return empty list or error? Let's return empty list for cleaner UI if DB down
+         return ClassListResponse(classes=[])
+    
+    classes_cursor = db.classes.find()
+    classes = [Class(**c) for c in classes_cursor]
+    return ClassListResponse(classes=classes)

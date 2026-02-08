@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     elevenlabs_tts_model_id: str = "eleven_multilingual_v2"
     vector_db_url: str | None = None
     credit_start_balance: int = 50
+    mongo_connection_string: str | None = None
+    transcript_embeddings_key: str | None = None
 
 
 settings = Settings()
