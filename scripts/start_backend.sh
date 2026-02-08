@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="/Users/joecowles/Desktop/hacklahoma"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIR="$SCRIPT_DIR/.."
 BACKEND_DIR="$ROOT_DIR/backend"
 
 cd "$BACKEND_DIR"

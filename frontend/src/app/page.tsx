@@ -59,15 +59,33 @@ const lecturesData = [
 ];
 
 export default function LectureAssistantDashboard() {
+  const { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations } = useRealtimeTranscription();
+
+  // Map backend concepts to UI format
+  const allConcepts: KeyConcept[] = concepts.map(c => ({
+    id: c.id,
+    title: c.keyword,
+    summary: c.definition,
+    type: c.stem_concept ? 'concept' : 'term'
+  }));
+
   const [selectedConcept, setSelectedConcept] = useState<KeyConcept | null>(null);
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures'>('live-learn');
 
   const handleConceptClick = (conceptId: string) => {
-    const concept = keyConceptsData.find(c => c.id === conceptId);
+    console.log("Concept Clicked - ID:", conceptId);
+    const concept = allConcepts.find(c => c.id === conceptId);
     if (concept) {
+      console.log("Selected Concept found:", concept);
       setSelectedConcept(concept);
     }
   };
+
+  // Debug: Log all concepts IDs to check for duplicates
+  console.log("All Concept IDs:", allConcepts.map(c => c.id));
+  if (selectedConcept) {
+    console.log("Currently Selected ID:", selectedConcept.id);
+  }
 
   const handleClosePanel = () => {
     setSelectedConcept(null);
@@ -76,6 +94,10 @@ export default function LectureAssistantDashboard() {
   const handleNavigation = (section: 'live-learn' | 'lectures') => {
     setActiveSection(section);
   };
+
+  // Filter videos and simulations for selected concept
+  const relatedVideos = selectedConcept ? videos.filter(v => v.context_concept_id === selectedConcept.id) : [];
+  const relatedSimulation = selectedConcept ? simulations.find(s => s.concept_id === selectedConcept.id) : null;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-fuchsia-500/30 h-full">

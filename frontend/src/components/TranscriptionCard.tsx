@@ -1,6 +1,6 @@
 "use client";
 
-import { useRealtimeTranscription, TranscriptionItem } from "../hooks/useRealtimeTranscription";
+import { TranscriptionItem } from "../hooks/useRealtimeTranscription";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useEffect } from "react";
 import clsx from "clsx";
@@ -10,9 +10,15 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export function TranscriptionCard() {
-  const { isRecording, transcripts, error, startRecording, stopRecording } = useRealtimeTranscription();
+interface TranscriptionCardProps {
+  isRecording: boolean;
+  transcripts: TranscriptionItem[];
+  error: string | null;
+  startRecording: () => void;
+  stopRecording: () => void;
+}
 
+export function TranscriptionCard({ isRecording, transcripts, error, startRecording, stopRecording }: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {

@@ -12,6 +12,9 @@ interface UseRealtimeTranscriptionReturn {
     error: string | null;
     startRecording: () => Promise<void>;
     stopRecording: () => void;
+    concepts: any[];
+    videos: any[];
+    simulations: any[];
 }
 
 const ELEVENLABS_REALTIME_URL = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
@@ -68,8 +71,14 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
     const [isRecording, setIsRecording] = useState(false);
     const [transcripts, setTranscripts] = useState<TranscriptionItem[]>([]);
     const [error, setError] = useState<string | null>(null);
+    
+    // Pipeline states
+    const [concepts, setConcepts] = useState<any[]>([]);
+    const [videos, setVideos] = useState<any[]>([]);
+    const [simulations, setSimulations] = useState<any[]>([]);
 
     const socketRef = useRef<WebSocket | null>(null);
+    const backendSocketRef = useRef<WebSocket | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -104,16 +113,53 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                 socket.close();
             }
         }
+        
+        if (backendSocketRef.current) {
+            const socket = backendSocketRef.current;
+            backendSocketRef.current = null;
+            if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+                socket.close();
+            }
+        }
 
         setIsRecording(false);
     }, []);
 
     useEffect(() => {
+        // Connect to backend WebSocket on mount (or just when recording starts? Let's do when recording starts to keep it simple, or maybe on mount to be ready)
+        // For simplicity, we'll connect when recording starts to ensure we have a session.
         return () => cleanup();
     }, [cleanup]);
 
     const stopRecording = useCallback(() => {
-        cleanup();
+        // Force commit the last partial transcript if it exists
+        setTranscripts((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.type === "partial" && last.text.trim()) {
+                const transcriptText = last.text;
+                const lectureId = "lecture_" + new Date().toISOString().split('T')[0];
+                const chunkId = "chunk_final_" + Date.now();
+
+                // Send to Backend WebSocket before cleaning up
+                if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
+                    backendSocketRef.current.send(JSON.stringify({
+                        type: "transcript_commit",
+                        lecture_id: lectureId,
+                        chunk_id: chunkId,
+                        text: transcriptText,
+                        previous_context: prev.length > 1 ? prev[prev.length - 2].text : ""
+                    }));
+                }
+                
+                return [...prev.slice(0, -1), { ...last, type: "committed" }];
+            }
+            return prev;
+        });
+
+        // Small delay to allow message to be sent before closing sockets
+        setTimeout(() => {
+            cleanup();
+        }, 100);
     }, [cleanup]);
 
     const startRecording = useCallback(async () => {
@@ -124,6 +170,44 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
         setError(null);
 
         try {
+            // 1. Connect to Backend WebSocket
+            const backendSocket = new WebSocket("ws://localhost:8000/ws/user_1");
+            backendSocketRef.current = backendSocket;
+            
+            backendSocket.onopen = () => {
+                console.log("Connected to Backend WebSocket");
+            };
+            
+            backendSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "pipeline_result") {
+                        const results = data.results;
+                        console.log("Pipeline Results received:", results);
+                        if (results.concepts) {
+                            setConcepts(prev => {
+                                // Filter out concepts that already exist by keyword OR by ID
+                                const existingKeywords = new Set(prev.map(c => c.keyword.toLowerCase()));
+                                const existingIds = new Set(prev.map(c => c.id));
+                                
+                                const newConcepts = results.concepts.filter((c: any) => 
+                                    !existingKeywords.has(c.keyword.toLowerCase()) && !existingIds.has(c.id)
+                                );
+                                return [...prev, ...newConcepts];
+                            });
+                        }
+                        if (results.videos) {
+                            setVideos(prev => [...prev, ...results.videos]);
+                        }
+                        if (results.simulations) {
+                            setSimulations(prev => [...prev, ...results.simulations]);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to parse backend message", e);
+                }
+            };
+
             const token = await fetchRealtimeToken();
 
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -137,8 +221,11 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
 
             streamRef.current = stream;
 
-            const sampleRate = 16000;
-            const audioContext = new AudioContext({ sampleRate });
+            streamRef.current = stream;
+
+            const audioContext = new AudioContext();
+            const sampleRate = audioContext.sampleRate;
+
             if (audioContext.state === "suspended") {
                 await audioContext.resume();
             }
@@ -155,7 +242,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
             const params = new URLSearchParams({
                 model_id: "scribe_v2_realtime",
                 token,
-                audio_format: "pcm_16000",
+                audio_format: `pcm_${sampleRate}`,
                 language_code: "en",
                 commit_strategy: "vad",
                 include_timestamps: "true",
@@ -195,20 +282,16 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                         const lectureId = "lecture_" + new Date().toISOString().split('T')[0]; // Simple daily ID for now
                         const chunkId = "chunk_" + Date.now();
 
-                        // Fire and forget concept extraction
-                        fetch("http://localhost:8000/concepts/extract", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
+                        // Send to Backend WebSocket
+                        if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
+                             backendSocketRef.current.send(JSON.stringify({
+                                type: "transcript_commit",
                                 lecture_id: lectureId,
                                 chunk_id: chunkId,
                                 text: transcriptText,
                                 previous_context: transcripts.length > 0 ? transcripts[transcripts.length - 1].text : ""
-                            })
-                        })
-                            .then(res => res.json())
-                            .then(data => console.log("Extracted Concepts:", data))
-                            .catch(err => console.error("Concept extraction failed:", err));
+                            }));
+                        }
 
                         setTranscripts((prev) => {
                             const last = prev[prev.length - 1];
@@ -262,5 +345,5 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
         }
     }, [cleanup, isRecording, transcripts]); // Added transcripts to dependency array for context
 
-    return { isRecording, transcripts, error, startRecording, stopRecording };
+    return { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations };
 }
