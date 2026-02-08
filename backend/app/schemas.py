@@ -121,3 +121,22 @@ class OnboardingRequest(BaseModel):
 class OnboardingResponse(BaseModel):
     user_id: str
     status: str
+
+
+class CreateLectureRequest(BaseModel):
+    title: str
+    instructor: str | None = None
+    subject: str | None = None
+
+
+class Lecture(BaseModel):
+    id: str
+    title: str
+    instructor: str | None = None
+    date: str | None = None
+    status: str | None = None
+    duration: str | None = None
+
+
+class LectureListResponse(BaseModel):
+    lectures: list[Lecture]

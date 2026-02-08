@@ -1,0 +1,10 @@
+environment=dev
+gemini_api_key=AIzaSyDHxrMT0cFadyZ3NyI-PtjRHS0B_GgWTtg
+gemini_model=gemini-2.5-flash-lite
+elevenlabs_api_key=sk_11b72d18e7b1370dec39f8d5f40e238e80c90e9053768a55
+elevenlabs_voice_id=tZssYepgGaQmegsMEXjK
+elevenlabs_tts_model_id=eleven_multilingual_v2
+youtube_api_key=
+youtube_region_code=
+vector_db_url=mongodb+srv://db_user:jERHfJjMHgfBPQom@cluster0.fjivexv.mongodb.net/?appName=Cluster0
+credit_start_balance=50

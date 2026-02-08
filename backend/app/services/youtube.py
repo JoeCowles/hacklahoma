@@ -1,74 +1,48 @@
 from typing import Any
-import json
-import re
-from google import genai
-from google.genai import types
-from app.config import settings
+import yt_dlp
 
 class YouTubeClient:
     def __init__(self) -> None:
-        if not settings.gemini_api_key:
-            print("WARNING: Gemini API Key not configured. Search will fail.")
-            self.client = None
-        else:
-            self.client = genai.Client(
-                api_key=settings.gemini_api_key,
-                http_options={'api_version': 'v1beta'}
-            )
-            self.model_id = settings.gemini_model
+        pass
 
     def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
-        if not self.client:
-            return []
-            
         results: list[dict[str, Any]] = []
         
-        try:
-            # Prompt Gemini to provide video links
-            prompt = f"""
-            Find {limit} relevant and popular YouTube videos matching the query: "{query}".
-            Return a pure JSON list of objects, where each object has:
-            - "title": The video title
-            - "url": The full YouTube watch URL (must start with https://www.youtube.com/watch?v=)
-            
-            Return ONLY the JSON. No markdown, no explanations.
-            """
-            
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                )
-            )
-            
-            # Use the same JSON parsing logic as in GeminiClient (implicitly via response.text and json.loads)
-            text = response.text.strip()
-            # Clean up potential markdown code blocks if the SDK didn't handle it
-            if text.startswith("```"):
-                text = re.sub(r"^```json\s*", "", text)
-                text = re.sub(r"```$", "", text)
-                text = text.strip()
-            
-            data = json.loads(text)
-            
-            for item in data:
-                if len(results) >= limit:
-                    break
-                
-                url = item.get("url")
-                title = item.get("title", "Unknown Title")
-                
-                if url and "youtube.com/watch" in url:
-                    results.append({
-                        "title": title,
-                        "url": url,
-                        "channel": None,
-                        "published_at": None,
-                    })
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'force_generic_extractor': False,
+            'noplaylist': True,
+        }
 
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # ytsearchN:query searches for N results
+                search_query = f"ytsearch{limit}:{query}"
+                info = ydl.extract_info(search_query, download=False)
+                
+                if 'entries' in info:
+                    for entry in info['entries']:
+                        if not entry:
+                            continue
+                            
+                        # yt-dlp returns 'url' as the video ID sometimes or full URL
+                        # For ytsearch flat extraction, it usually gives 'url' as the full URL or just the ID.
+                        # Let's check.
+                        video_url = entry.get('url')
+                        if video_url and not video_url.startswith('http'):
+                            video_url = f"https://www.youtube.com/watch?v={video_url}"
+                            
+                        results.append({
+                            "title": entry.get('title', 'Unknown Title'),
+                            "url": video_url,
+                            "channel": entry.get('uploader'),
+                            "published_at": entry.get('upload_date'), # Format might be YYYYMMDD
+                            "thumbnail": entry.get('thumbnail'),
+                            "duration": entry.get('duration')
+                        })
         except Exception as e:
-            print(f"Error generating video links with Gemini: {e}")
+            print(f"Error searching YouTube with yt-dlp: {e}")
             return []
 
         return results

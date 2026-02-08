@@ -114,21 +114,76 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
             }
         }
         
-        if (backendSocketRef.current) {
-            const socket = backendSocketRef.current;
-            backendSocketRef.current = null;
-            if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-                socket.close();
-            }
-        }
-
         setIsRecording(false);
     }, []);
 
     useEffect(() => {
-        // Connect to backend WebSocket on mount (or just when recording starts? Let's do when recording starts to keep it simple, or maybe on mount to be ready)
-        // For simplicity, we'll connect when recording starts to ensure we have a session.
-        return () => cleanup();
+        // Persistent Backend WebSocket connection
+        const connectBackend = () => {
+            if (backendSocketRef.current?.readyState === WebSocket.OPEN) return;
+
+            const backendSocket = new WebSocket("ws://127.0.0.1:8000/ws/user_1");
+            backendSocketRef.current = backendSocket;
+            
+            backendSocket.onopen = () => {
+                console.log("✅ Connected to Backend WebSocket at 127.0.0.1:8000");
+            };
+            
+            backendSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "pipeline_result") {
+                        const results = data.results;
+                        console.log("Pipeline Results received:", results);
+                        if (results.concepts) {
+                            setConcepts(prev => {
+                                const existingKeywords = new Set(prev.map(c => c.keyword.toLowerCase()));
+                                const existingIds = new Set(prev.map(c => c.id));
+                                
+                                const newConcepts = results.concepts.filter((c: any) => 
+                                    !existingKeywords.has(c.keyword.toLowerCase()) && !existingIds.has(c.id)
+                                );
+                                return [...prev, ...newConcepts];
+                            });
+                        }
+                        if (results.videos) {
+                            setVideos(prev => [...prev, ...results.videos]);
+                        }
+                        if (results.simulations) {
+                            setSimulations(prev => {
+                                const next = [...prev];
+                                results.simulations.forEach((newSim: any) => {
+                                    const index = next.findIndex(s => s.concept_id === newSim.concept_id);
+                                    if (index !== -1) {
+                                        next[index] = { ...next[index], ...newSim };
+                                    } else {
+                                        next.push(newSim);
+                                    }
+                                });
+                                return next;
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to parse backend message", e);
+                }
+            };
+
+            backendSocket.onclose = () => {
+                console.log("❌ Backend WebSocket closed. Retrying in 3s...");
+                setTimeout(connectBackend, 3000);
+            };
+        };
+
+        connectBackend();
+
+        return () => {
+            if (backendSocketRef.current) {
+                backendSocketRef.current.close();
+                backendSocketRef.current = null;
+            }
+            cleanup();
+        };
     }, [cleanup]);
 
     const stopRecording = useCallback(() => {
@@ -156,10 +211,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
             return prev;
         });
 
-        // Small delay to allow message to be sent before closing sockets
-        setTimeout(() => {
-            cleanup();
-        }, 100);
+        cleanup();
     }, [cleanup]);
 
     const startRecording = useCallback(async () => {
@@ -170,57 +222,6 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
         setError(null);
 
         try {
-            // 1. Connect to Backend WebSocket
-            const backendSocket = new WebSocket("ws://127.0.0.1:8000/ws/user_1");
-            backendSocketRef.current = backendSocket;
-            
-            backendSocket.onopen = () => {
-                console.log("✅ Connected to Backend WebSocket at 127.0.0.1:8000");
-            };
-            
-            backendSocket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === "pipeline_result") {
-                        const results = data.results;
-                        console.log("Pipeline Results received:", results);
-                        if (results.concepts) {
-                            setConcepts(prev => {
-                                // Filter out concepts that already exist by keyword OR by ID
-                                const existingKeywords = new Set(prev.map(c => c.keyword.toLowerCase()));
-                                const existingIds = new Set(prev.map(c => c.id));
-                                
-                                const newConcepts = results.concepts.filter((c: any) => 
-                                    !existingKeywords.has(c.keyword.toLowerCase()) && !existingIds.has(c.id)
-                                );
-                                return [...prev, ...newConcepts];
-                            });
-                        }
-                        if (results.videos) {
-                            setVideos(prev => [...prev, ...results.videos]);
-                        }
-                        if (results.simulations) {
-                            setSimulations(prev => {
-                                const next = [...prev];
-                                results.simulations.forEach((newSim: any) => {
-                                    const index = next.findIndex(s => s.concept_id === newSim.concept_id);
-                                    if (index !== -1) {
-                                        // Update existing
-                                        next[index] = { ...next[index], ...newSim };
-                                    } else {
-                                        // Add new
-                                        next.push(newSim);
-                                    }
-                                });
-                                return next;
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.error("Failed to parse backend message", e);
-                }
-            };
-
             const token = await fetchRealtimeToken();
 
             const stream = await navigator.mediaDevices.getUserMedia({
