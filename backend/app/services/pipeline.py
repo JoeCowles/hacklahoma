@@ -113,11 +113,13 @@ class PipelineService:
                         "code": None
                     })
 
-        # Fallback: Ensure every concept extracted has a corresponding simulation (now also pending)
+        # Fallback: Ensure every concept extracted has a corresponding simulation (now also pending) and video search
         extracted_keywords = [c["keyword"] for c in results["concepts"]]
         simulated_keywords = [s["concept"] for s in results["simulations"]]
+        video_context_keywords = [v.get("context_concept") for v in results["videos"]]
         
         for concept_obj in results["concepts"]:
+            # Fallback for simulations
             if concept_obj["keyword"] not in simulated_keywords:
                 results["simulations"].append({
                     "concept": concept_obj["keyword"],
@@ -126,5 +128,14 @@ class PipelineService:
                     "status": "pending",
                     "code": None
                 })
+            
+            # Fallback for videos
+            if concept_obj["keyword"] not in video_context_keywords:
+                print(f"DEBUG: Fallback - Triggering mandatory video search for '{concept_obj['keyword']}'")
+                video_results = self.youtube.search(concept_obj["keyword"], limit=2)
+                for v in video_results:
+                    v["context_concept"] = concept_obj["keyword"]
+                    v["context_concept_id"] = concept_obj["id"]
+                    results["videos"].append(v)
 
         return results
