@@ -69,13 +69,4 @@ npm run dev
   - `docker compose up --build`
 
 Frontend: `http://localhost:3000`
-## API Endpoints (stubbed)
-- `POST /concepts/extract`
-- `POST /concepts/{lecture_id}/walkthrough`
-- `POST /animations/generate`
-- `POST /videos/search`
-- `GET /credits/{user_id}`
-- `POST /credits/spend`
-- `POST /shares`
 
-Update these to wire Gemini, ElevenLabs, and your vector DB.
