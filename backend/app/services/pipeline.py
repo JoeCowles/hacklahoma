@@ -19,16 +19,23 @@ class PipelineService:
         self.youtube = youtube_client
         self.simulation = simulation_service
 
-    async def process_chunk(self, text: str, previous_context: str, lecture_id: str) -> dict[str, Any]:
+    async def process_chunk(self, text: str, previous_context: str, lecture_id: str, existing_concepts: dict[str, str] = None) -> dict[str, Any]:
         prompt_template = load_prompt("pipeline_decision")
+        
+        context_concepts = ", ".join(existing_concepts.keys()) if existing_concepts else "None"
+        if not context_concepts:
+            context_concepts = "None"
+        
         prompt = (
             prompt_template.replace("{{previous_context}}", previous_context)
             .replace("{{transcript_chunk}}", text)
+            .replace("{{existing_concepts}}", context_concepts)
         )
 
         try:
             # Async call to Gemini
             data = await self.gemini.generate_json_async(prompt)
+            print(f"DEBUG: Pipeline raw output: {json.dumps(data)}")
             print(f"DEBUG: Pipeline received actions: {[a.get('type') for a in (data or {}).get('actions', [])]}")
         except Exception as e:
             print(f"Pipeline Gemini Error: {e}")
@@ -64,10 +71,14 @@ class PipelineService:
                 query = payload.get("query")
                 context_concept = payload.get("context_concept")
                 if query:
-                    # Try to find the matching concept ID from this same chunk processing
-                    # (In a real system we'd track IDs across chunks, but here we can at least match within the chunk)
+                    # Try to find the matching concept ID from this same chunk processing or existing concepts
                     matching_concept = next((c for c in results["concepts"] if c["keyword"] == context_concept), None)
-                    context_id = matching_concept["id"] if matching_concept else f"ref_{int(time.time()*1000)}"
+                    if matching_concept:
+                        context_id = matching_concept["id"]
+                    elif existing_concepts and context_concept in existing_concepts:
+                        context_id = existing_concepts[context_concept]
+                    else:
+                        context_id = f"ref_{int(time.time()*1000)}"
                     
                     video_results = self.youtube.search(query, limit=2)
                     for v in video_results:
@@ -83,49 +94,37 @@ class PipelineService:
                     matching_concept = next((c for c in results["concepts"] if c["keyword"].lower() == concept.lower()), None)
                     
                     # If it's a new concept in this chunk, use its generated ID.
-                    # Otherwise, generate a deterministic-ish ID based on keyword for the frontend to match.
+                    # If it's an existing concept from previous chunks, use its known ID.
+                    # Otherwise, generate a deterministic-ish ID based on keyword.
                     if matching_concept:
                         concept_id = matching_concept["id"]
+                    elif existing_concepts and concept in existing_concepts:
+                        concept_id = existing_concepts[concept]
                     else:
                         # Fallback to a keyword-based ID that the frontend can use to link
-                        import hashlib
                         slug = concept.lower().replace(" ", "_")
                         concept_id = f"sim_link_{slug}"
-
-                    # Generate simulation code
-                    simulation_code = await self.simulation.generate_simulation(
-                        concept=concept,
-                        description=desc,
-                        context=f"{previous_context}\n\nRecent Transcript: {text}"
-                    )
 
                     results["simulations"].append({
                         "concept": concept,
                         "concept_id": concept_id,
                         "description": desc,
-                        "status": "ready",
-                        "code": simulation_code
+                        "status": "pending",
+                        "code": None
                     })
-                    print(f"DEBUG: Generated simulation for '{concept}' (ID: {concept_id})")
 
-        # Fallback: Ensure every concept extracted has a corresponding simulation
+        # Fallback: Ensure every concept extracted has a corresponding simulation (now also pending)
         extracted_keywords = [c["keyword"] for c in results["concepts"]]
         simulated_keywords = [s["concept"] for s in results["simulations"]]
         
         for concept_obj in results["concepts"]:
             if concept_obj["keyword"] not in simulated_keywords:
-                print(f"DEBUG: Fallback - Triggering mandatory simulation for '{concept_obj['keyword']}'")
-                simulation_code = await self.simulation.generate_simulation(
-                    concept=concept_obj["keyword"],
-                    description=f"Interactive visualization of {concept_obj['keyword']}",
-                    context=f"{previous_context}\n\nRecent Transcript: {text}"
-                )
                 results["simulations"].append({
                     "concept": concept_obj["keyword"],
                     "concept_id": concept_obj["id"],
                     "description": f"Mandatory simulation for {concept_obj['keyword']}",
-                    "status": "ready",
-                    "code": simulation_code
+                    "status": "pending",
+                    "code": None
                 })
 
         return results

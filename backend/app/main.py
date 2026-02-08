@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import time
+import asyncio
 
 from .config import settings
 from .services.gemini import GeminiClient
@@ -76,56 +77,165 @@ def load_prompt(name: str) -> str:
 def health() -> dict[str, str]:
     return {"status": "ok", "environment": settings.environment}
 
-@app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await websocket.accept()
+async def run_simulation_background(websocket: WebSocket, simulation_service: SimulationService, sim_request: dict, lecture_id: str, previous_context: str, text: str):
     try:
+        print(f"DEBUG: Starting background simulation for {sim_request['concept']}")
+        code = await simulation_service.generate_simulation(
+            concept=sim_request["concept"],
+            description=sim_request["description"],
+            context=f"{previous_context}\n\nRecent Transcript: {text}"
+        )
+        
+        # Send update to client
+        if websocket.client_state.name == "CONNECTED":
+            await websocket.send_json({
+                "type": "pipeline_result",
+                "lecture_id": lecture_id,
+                "results": {
+                    "concepts": [],
+                    "videos": [],
+                    "simulations": [{
+                        **sim_request,
+                        "status": "ready",
+                        "code": code
+                    }]
+                }
+            })
+            print(f"DEBUG: Background simulation for {sim_request['concept']} completed and sent.")
+    except Exception as e:
+        print(f"Error in background simulation task: {e}")
+
+@app.websocket("/ws/{client_id}")
+
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+
+    await websocket.accept()
+
+    try:
+
         while True:
+
             data = await websocket.receive_text()
+
             try:
+
                 message = json.loads(data)
+
                 msg_type = message.get("type")
+
                 
+
                 if msg_type == "transcript_commit":
+
                     # Process the committed transcript
+
                     text = message.get("text", "")
+
                     previous_context = message.get("previous_context", "")
+
                     lecture_id = message.get("lecture_id", "default_lecture")
+
                     
+
                     if text:
-                        # Run the pipeline
-                        result = await pipeline_service.process_chunk(text, previous_context, lecture_id)
+
+                        # Get existing concepts for this lecture
+
+                        existing_concepts_map = {c.keyword: c.id for c in CONCEPTS.get(lecture_id, [])}
+
                         
-                        # Send back the results
+
+                        # Run the pipeline (now returns concepts immediately, simulations are pending)
+
+                        result = await pipeline_service.process_chunk(text, previous_context, lecture_id, existing_concepts_map)
+
+                        
+
+                        # Send back the initial results
+
                         await websocket.send_json({
+
                             "type": "pipeline_result",
+
                             "lecture_id": lecture_id,
+
                             "results": result
+
                         })
+
+
+
+                        # Handle background simulation generation
+
+                        for sim in result.get("simulations", []):
+
+                            if sim.get("status") == "pending":
+
+                                asyncio.create_task(run_simulation_background(
+
+                                    websocket, 
+
+                                    simulation_service, 
+
+                                    sim, 
+
+                                    lecture_id, 
+
+                                    previous_context, 
+
+                                    text
+
+                                ))
+
                         
+
                         # Also update local store if needed (e.g., CONCEPTS)
+
                         new_concepts_data = result.get("concepts", [])
+
                         if new_concepts_data:
+
                             new_concepts_objs = [
+
                                 Concept(
+
                                     id=c["id"],
+
                                     keyword=c["keyword"], 
+
                                     definition=c.get("definition"),
+
                                     stem_concept=c["stem_concept"], 
+
                                     source_chunk_id=message.get("chunk_id")
+
                                 ) 
+
                                 for c in new_concepts_data
+
                             ]
+
                             CONCEPTS.setdefault(lecture_id, []).extend(new_concepts_objs)
 
+
+
             except json.JSONDecodeError:
+
                 pass
+
             except Exception as e:
+
                 print(f"Error processing message: {e}")
+
                 await websocket.send_json({"type": "error", "message": str(e)})
 
+
+
     except WebSocketDisconnect:
+
         print(f"Client {client_id} disconnected")
+
+
 
 
 

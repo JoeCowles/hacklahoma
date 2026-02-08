@@ -107,10 +107,6 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
 
         <TranscriptList transcripts={transcripts} />
         <div ref={listEndRef} />
-
-        <div className="pt-10 mt-10 border-t border-white/5">
-          <RelatedLectures />
-        </div>
       </div>
 
       {/* Floating Simulation Tooltip */}
@@ -268,34 +264,5 @@ function TranscriptItem({ item }: { item: TranscriptionItem }) {
         {item.text}
       </p>
     </motion.div>
-  );
-}
-
-function RelatedLectures() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 text-gray-300 mb-6">
-        <span className="material-symbols-outlined text-lg">subscriptions</span>
-        <h3 className="font-bold text-sm uppercase tracking-wider">Related Content</h3>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="aspect-video bg-black/40 rounded-2xl overflow-hidden shadow-lg border border-white/5 group relative cursor-pointer hover:border-white/20 transition-all">
-            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors z-10 pointer-events-none">
-              <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300 text-5xl drop-shadow-xl">play_circle</span>
-            </div>
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-              title="YouTube video player"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full opacity-70 group-hover:opacity-100 transition-opacity"
-            ></iframe>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 
 
 
@@ -219,8 +220,8 @@ export default function LectureAssistantDashboard() {
                     exit={{ opacity: 0, x: -20 }}
                     className="flex-[2] flex flex-col h-full bg-black/20"
                   >
-                    {/* Concept Detail View */}
-                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20 backdrop-blur-xl">
+                    {/* Concept Detail View Header */}
+                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-fuchsia-500/20 rounded-xl text-fuchsia-400 ring-1 ring-fuchsia-500/30">
                           <span className="material-symbols-outlined text-2xl">lightbulb</span>
