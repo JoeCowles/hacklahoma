@@ -33,7 +33,11 @@ from .schemas import (
     AuthLoginResponse,
     OnboardingRequest,
     OnboardingResponse,
+    CreateLectureRequest,
+    Lecture,
+    LectureListResponse,
 )
+from pymongo import MongoClient
 from pathlib import Path
 
 app = FastAPI(title="LearnStream API", version="0.1.0")
@@ -45,6 +49,35 @@ app.add_middleware(
     allow_methods=["*"] ,
     allow_headers=["*"],
 )
+
+# Database Initialization
+if settings.mongo_connection_string:
+    mongo_client = MongoClient(settings.mongo_connection_string)
+    db = mongo_client.get_database("hacklahoma_db")
+    
+    # Ensure default user exists
+    default_user = {
+        "user_id": "student_default",
+        "email": "student@example.com",
+        "display_name": "Default Student",
+        "credits": settings.credit_start_balance
+    }
+    
+    # Upsert default user to ensure they exist
+    try:
+        db.users.update_one(
+            {"user_id": "student_default"},
+            {"$setOnInsert": default_user},
+            upsert=True
+        )
+    except Exception as e:
+        print(f"Failed to initialize default user: {e}")
+
+else:
+    print("WARNING: MongoDB connection string not found. Database features will fail.")
+    mongo_client = None
+    db = None
+
 
 # Temporary in-memory stores for scaffold
 CONCEPTS: dict[str, list[Concept]] = {}
@@ -279,7 +312,16 @@ def extract_concepts(payload: TranscriptChunk) -> ConceptExtractionResponse:
     if not new_concepts:
         raise HTTPException(status_code=502, detail="Gemini returned no concepts")
 
-    CONCEPTS.setdefault(payload.lecture_id, []).extend(new_concepts)
+    if db is not None:
+        # Prepare documents for insertion
+        concept_docs = [concept.model_dump() for concept in new_concepts]
+        for doc in concept_docs:
+            doc["lecture_id"] = payload.lecture_id
+        db.concepts.insert_many(concept_docs)
+    else:
+        # Fallback to in-memory if DB is down (or just fail, but for now fallback is okay or just skip)
+        CONCEPTS.setdefault(payload.lecture_id, []).extend(new_concepts)
+    
     return ConceptExtractionResponse(lecture_id=payload.lecture_id, new_concepts=new_concepts)
 
 
@@ -385,3 +427,47 @@ def onboarding(payload: OnboardingRequest) -> OnboardingResponse:
     if payload.user_id not in USERS:
         raise HTTPException(status_code=404, detail="User not found")
     return OnboardingResponse(user_id=payload.user_id, status="saved")
+
+
+@app.post("/lectures/create", response_model=Lecture)
+def create_lecture(payload: CreateLectureRequest) -> Lecture:
+    # In a real app we'd validate against the authenticated user
+    # For now, we trust the payload or check against our basic USERS dict
+    if payload.student_id not in USERS:
+        # Check in DB if not in memory
+        if db is not None:
+             if not db.users.find_one({"user_id": payload.student_id}):
+                 raise HTTPException(status_code=404, detail="Student not found")
+        else:
+             raise HTTPException(status_code=404, detail="Student not found")
+
+    import uuid
+    lecture_id = f"lecture_{uuid.uuid4()}"
+    
+    new_lecture = {
+        "id": lecture_id,
+        "professor": payload.professor,
+        "school": payload.school,
+        "class_name": payload.class_name,
+        "class_time": payload.class_time,
+        "student_id": payload.student_id,
+    }
+
+    if db is not None:
+        db.lectures.insert_one(new_lecture.copy())
+    else:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    return Lecture(**new_lecture)
+
+
+@app.get("/lectures", response_model=LectureListResponse)
+def get_lectures() -> LectureListResponse:
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    # In a real app, filtering by user_id would happen here
+    lectures_cursor = db.lectures.find()
+    # MongoDB returns _id, we need to map it or ignore it since we store "id" explicitly
+    lectures = [Lecture(**l) for l in lectures_cursor]
+    return LectureListResponse(lectures=lectures)

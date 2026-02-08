@@ -5,6 +5,16 @@ import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
+import { LectureForm } from '../components/LectureForm';
+
+interface Lecture {
+  id: string;
+  professor: string;
+  school: string;
+  class_name: string;
+  class_time: string;
+  student_id: string;
+}
 
 
 
@@ -33,6 +43,27 @@ export default function LectureAssistantDashboard() {
 
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures'>('live-learn');
+  const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const fetchLectures = async () => {
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/lectures`);
+      if (res.ok) {
+        const data = await res.json();
+        setLectures(data.lectures);
+      }
+    } catch (error) {
+      console.error("Failed to fetch lectures:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'lectures') {
+      fetchLectures();
+    }
+  }, [activeSection]);
 
   const handleConceptClick = (concept: Concept) => {
     console.log("Concept Clicked - ID:", concept.id);
@@ -177,20 +208,33 @@ export default function LectureAssistantDashboard() {
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsFormOpen(true)}
                   className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer group min-h-[220px]"
                 >
                   <div className="size-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors ring-1 ring-white/10 group-hover:ring-violet-500/30">
                     <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-violet-400 transition-colors">add</span>
                   </div>
-                  <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Join New Class</p>
+                  <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Class</p>
                 </motion.div>
 
-                {lecturesData.map((lecture) => (
+                {lectures.map((lecture) => (
                   <LectureCard key={lecture.id} lecture={lecture} />
                 ))}
               </div>
             </div>
           )}
+
+          <AnimatePresence>
+            {isFormOpen && (
+              <LectureForm
+                onSuccess={() => {
+                  setIsFormOpen(false);
+                  fetchLectures();
+                }}
+                onCancel={() => setIsFormOpen(false)}
+              />
+            )}
+          </AnimatePresence>
 
           {activeSection === 'live-learn' && (
             <div className="flex h-full">
@@ -338,31 +382,27 @@ function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: 
   )
 }
 
-function LectureCard({ lecture }: { lecture: any }) {
+function LectureCard({ lecture }: { lecture: Lecture }) {
   return (
     <motion.div
       whileHover={{ y: -5 }}
       className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
     >
-      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider
-                ${lecture.status === 'Live' ? 'bg-red-500/20 text-red-400' :
-          lecture.status === 'Upcoming' ? 'bg-blue-500/20 text-blue-400' :
-            'bg-gray-500/20 text-gray-400'}`}
-      >
-        {lecture.status}
+      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400`}>
+        Active
       </div>
 
-      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">{lecture.title}</h3>
-      <p className="text-sm text-gray-400 mb-6">{lecture.instructor}</p>
+      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">{lecture.class_name}</h3>
+      <p className="text-sm text-gray-400 mb-6">{lecture.professor}</p>
 
       <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
         <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">calendar_today</span>
-          {lecture.date}
+          <span className="material-symbols-outlined text-sm">school</span>
+          {lecture.school}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">schedule</span>
-          {lecture.duration}
+          {lecture.class_time}
         </div>
       </div>
     </motion.div>
