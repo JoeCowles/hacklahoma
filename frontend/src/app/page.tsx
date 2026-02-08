@@ -247,6 +247,8 @@ export default function LectureAssistantDashboard() {
                       error={error}
                       startRecording={startRecording}
                       stopRecording={stopRecording}
+                      concepts={allConcepts}
+                      onConceptClick={handleConceptClick}
                     />
                   </motion.div>
                 ) : (
@@ -283,7 +285,7 @@ export default function LectureAssistantDashboard() {
 
                           {/* Interactive Simulation Card */}
                           {relatedSimulation && (
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-3 md:col-span-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase flex items-center gap-1">
                                   <span className="material-symbols-outlined text-[12px]">science</span>
