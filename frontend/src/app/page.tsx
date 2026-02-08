@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
+import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 
 interface KeyConcept {
   id: string;
@@ -10,64 +11,37 @@ interface KeyConcept {
   type: 'concept' | 'term' | 'person';
 }
 
-const keyConceptsData: KeyConcept[] = [
-  {
-    id: 'wave-particle',
-    title: 'Wave-Particle Duality',
-    summary: 'The wave-particle duality is a fundamental concept of quantum mechanics that suggests that every particle or quantum entity may be described as either a particle or a wave. It expresses the inability of the classical concepts "particle" or "wave" to fully describe the behavior of quantum-scale objects. As Albert Einstein wrote: "It seems as though we must use sometimes the one theory and sometimes the other, while at times we may use either. We are faced with a new kind of difficulty. We have two contradictory pictures of reality; separately neither of them fully explains the phenomena of light, but together they do."',
-    type: 'concept'
-  },
-  {
-    id: 'quantum-mechanics',
-    title: 'Quantum Mechanics',
-    summary: 'Quantum mechanics is a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles. It is the foundation of all quantum physics including quantum chemistry, quantum field theory, quantum technology, and quantum information science.',
-    type: 'concept'
-  },
-  {
-    id: 'schrodinger-equation',
-    title: 'Schrödinger Equation',
-    summary: 'The Schrödinger equation is a linear partial differential equation that governs the wave function of a quantum-mechanical system. It is a key result in quantum mechanics, and its discovery was a significant landmark in the development of the subject. The equation is named after Erwin Schrödinger, who postulated the equation in 1925, and published it in 1926.',
-    type: 'concept'
-  },
-  {
-    id: 'particle-physics',
-    title: 'Particle Physics',
-    summary: 'Particle physics is a branch of physics that studies the nature of the particles that constitute matter and radiation. Although the word particle can refer to various types of very small objects, particle physics usually investigates the irreducibly smallest detectable particles and the fundamental interactions necessary to explain their behavior.',
-    type: 'concept'
-  },
-  {
-    id: 'classical-concepts',
-    title: 'Classical Concepts',
-    summary: 'Classical physics mainly includes the theories of mechanics, electromagnetism, and thermodynamics. These theories were developed before the 20th century. In classical physics, energy and matter are considered separate entities. However, in quantum physics, they are considered to be two forms of the same entity.',
-    type: 'concept'
-  },
-  {
-    id: 'wave-function',
-    title: 'Wave Function',
-    summary: 'A wave function in quantum physics is a mathematical description of the quantum state of an isolated quantum system. The wave function is a complex-valued probability amplitude, and the probabilities for the possible results of measurements made on the system can be derived from it. The most common symbols for a wave function are the Greek letters ψ and Ψ (lower-case and capital psi, respectively).',
-    type: 'concept'
-  }
-];
-
-const lecturesData = [
-  { id: 1, title: "Quantum Physics 101", instructor: "Prof. Julian Barnes", time: "10:30 AM", duration: "1h 30m", date: "Today", status: "Live" },
-  { id: 2, title: "Introduction to Linear Algebra", instructor: "Dr. Sarah Chen", time: "02:00 PM", duration: "1h 15m", date: "Today", status: "Upcoming" },
-  { id: 3, title: "History of Renaissance Art", instructor: "Prof. Michael Rossi", time: "09:00 AM", duration: "55m", date: "Yesterday", status: "Completed" },
-  { id: 4, title: "Advanced Algorithms", instructor: "Dr. Alan Turing", time: "11:00 AM", duration: "1h 30m", date: "Yesterday", status: "Completed" },
-  { id: 5, title: "Organic Chemistry II", instructor: "Prof. Marie Curie", time: "01:00 PM", duration: "2h 00m", date: "Feb 5, 2026", status: "Completed" },
-];
+const lecturesData: any[] = [];
 
 export default function LectureAssistantDashboard() {
+  const { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations } = useRealtimeTranscription();
+
+  // Map backend concepts to UI format
+  const allConcepts: KeyConcept[] = concepts.map(c => ({
+    id: c.id,
+    title: c.keyword,
+    summary: c.definition,
+    type: c.stem_concept ? 'concept' : 'term'
+  }));
+
   const [selectedConcept, setSelectedConcept] = useState<KeyConcept | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures'>('live-learn');
 
   const handleConceptClick = (conceptId: string) => {
-    const concept = keyConceptsData.find(c => c.id === conceptId);
+    console.log("Concept Clicked - ID:", conceptId);
+    const concept = allConcepts.find(c => c.id === conceptId);
     if (concept) {
+      console.log("Selected Concept found:", concept);
       setSelectedConcept(concept);
     }
   };
+
+  // Debug: Log all concepts IDs to check for duplicates
+  console.log("All Concept IDs:", allConcepts.map(c => c.id));
+  if (selectedConcept) {
+    console.log("Currently Selected ID:", selectedConcept.id);
+  }
 
   const handleClosePanel = () => {
     setSelectedConcept(null);
@@ -79,6 +53,10 @@ export default function LectureAssistantDashboard() {
     setActiveSection(section);
     setIsMenuOpen(false);
   };
+
+  // Filter videos and simulations for selected concept
+  const relatedVideos = selectedConcept ? videos.filter(v => v.context_concept_id === selectedConcept.id) : [];
+  const relatedSimulation = selectedConcept ? simulations.find(s => s.concept_id === selectedConcept.id) : null;
 
   return (
     <>
@@ -235,7 +213,15 @@ export default function LectureAssistantDashboard() {
             {/* We use conditional rendering to swap them, occupying the same flex space */}
 
             {/* Transcription Panel */}
-            {!selectedConcept && <TranscriptionCard />}
+            {!selectedConcept && (
+              <TranscriptionCard
+                isRecording={isRecording}
+                transcripts={transcripts}
+                error={error}
+                startRecording={startRecording}
+                stopRecording={stopRecording}
+              />
+            )}
 
             {/* Key Concept Detail Panel (Replaces Transcription) */}
             {selectedConcept && (
@@ -271,37 +257,47 @@ export default function LectureAssistantDashboard() {
                     </div>
 
                     {/* Mock Iframe (Approx 40-50% height) */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200">Interactive Simulation</h3>
-                      </div>
-                      <div className="w-full aspect-video bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden group hover:border-primary/50 transition-colors cursor-pointer">
-                        <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900"></div>
-                        <div className="text-center relative z-10 p-6">
-                          <span className="material-symbols-outlined text-6xl text-[#616f89]/30 group-hover:text-primary transition-colors mb-4">science</span>
-                          <p className="font-medium text-[#616f89] group-hover:text-primary transition-colors">Interactive {selectedConcept.title} Model</p>
-                          <button className="mt-4 px-4 py-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm text-sm font-bold border border-gray-200 dark:border-slate-700 group-hover:border-primary group-hover:text-primary transition-all">Click to Load Simulation</button>
+                    {relatedSimulation ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200">Interactive Simulation</h3>
+                          </div>
+                          <div className="w-full aspect-video bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden group hover:border-primary/50 transition-colors cursor-pointer">
+                            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900"></div>
+                            <div className="text-center relative z-10 p-6">
+                              <span className="material-symbols-outlined text-6xl text-[#616f89]/30 group-hover:text-primary transition-colors mb-4">science</span>
+                              <p className="font-medium text-[#616f89] group-hover:text-primary transition-colors">
+                                {relatedSimulation.description || `Interactive ${selectedConcept.title} Model`}
+                              </p>
+                              <button className="mt-4 px-4 py-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm text-sm font-bold border border-gray-200 dark:border-slate-700 group-hover:border-primary group-hover:text-primary transition-all">
+                                Click to Load Simulation
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                    ) : null}
+
 
                     {/* YouTube Videos (Side by side) */}
                     <div className="space-y-3">
                       <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200">Related Lectures</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="aspect-video bg-black rounded-lg overflow-hidden shadow-sm">
-                            <iframe
-                              width="100%"
-                              height="100%"
-                              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                              title="YouTube video player"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="w-full h-full"
-                            ></iframe>
-                          </div>
-                        ))}
+                        {relatedVideos.length > 0 && (
+                            relatedVideos.map((video, i) => (
+                              <div key={i} className="aspect-video bg-black rounded-lg overflow-hidden shadow-sm">
+                                <iframe
+                                  width="100%"
+                                  height="100%"
+                                  src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}`}
+                                  title={video.title}
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  className="w-full h-full"
+                                ></iframe>
+                              </div>
+                            ))
+                        )}
+
                       </div>
                     </div>
 
@@ -324,7 +320,7 @@ export default function LectureAssistantDashboard() {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                   <div className="flex flex-col gap-2">
-                    {keyConceptsData.map((concept) => (
+                    {allConcepts.map((concept) => (
                       <div
                         key={concept.id}
                         onClick={() => handleConceptClick(concept.id)}
@@ -335,7 +331,7 @@ export default function LectureAssistantDashboard() {
                       >
                         <div className="flex items-center justify-between mb-1">
                           <span className={`font-semibold text-sm ${selectedConcept?.id === concept.id ? 'text-white' : ''}`}>{concept.title}</span>
-                          {concept.id === 'wave-particle' && (
+                          {concept.type === 'concept' && (
                             <span className={`material-symbols-outlined text-xs ${selectedConcept?.id === concept.id ? 'text-white/80' : 'text-primary'}`}>auto_awesome</span>
                           )}
                         </div>

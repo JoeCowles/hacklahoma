@@ -1,6 +1,6 @@
 "use client";
 
-import { useRealtimeTranscription, TranscriptionItem } from "../hooks/useRealtimeTranscription";
+import { TranscriptionItem } from "../hooks/useRealtimeTranscription";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useEffect } from "react";
 import clsx from "clsx";
@@ -10,9 +10,15 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export function TranscriptionCard() {
-  const { isRecording, transcripts, error, startRecording, stopRecording } = useRealtimeTranscription();
+interface TranscriptionCardProps {
+    isRecording: boolean;
+    transcripts: TranscriptionItem[];
+    error: string | null;
+    startRecording: () => void;
+    stopRecording: () => void;
+}
 
+export function TranscriptionCard({ isRecording, transcripts, error, startRecording, stopRecording }: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -43,10 +49,6 @@ export function TranscriptionCard() {
 
         <TranscriptList transcripts={transcripts} />
         <div ref={listEndRef} />
-
-        <div className="pt-8 border-t border-gray-100 dark:border-slate-800 mt-8">
-          <RelatedLectures />
-        </div>
       </div>
     </div>
   );
@@ -147,28 +149,5 @@ function TranscriptItem({ item }: { item: TranscriptionItem }) {
         {item.text}
       </p>
     </motion.div>
-  );
-}
-
-function RelatedLectures() {
-  return (
-    <div className="space-y-4">
-      <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200">Related Lectures</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="aspect-video bg-black rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-              title="YouTube video player"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            ></iframe>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

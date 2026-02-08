@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+import json
 
 from .config import settings
 from .services.gemini import GeminiClient
 from .services.elevenlabs import ElevenLabsClient
+from .services.youtube import YouTubeClient
+from .services.pipeline import PipelineService
 # from .services.google_search import search_youtube_via_google
 from .schemas import (
     TranscriptChunk,
@@ -49,9 +52,8 @@ SESSIONS: dict[str, str] = {}
 
 gemini_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_model)
 elevenlabs_client = ElevenLabsClient(settings.elevenlabs_api_key or "")
-# youtube_client = YouTubeClient() # Initialized later or on demand if needed, but here we likely want it global or dependency injected
-from .services.youtube import YouTubeClient
 youtube_client = YouTubeClient()
+pipeline_service = PipelineService(gemini_client, youtube_client)
 
 PROMPT_DIR = Path(__file__).parent / "prompts"
 PROMPT_CACHE: dict[str, str] = {}
@@ -69,6 +71,56 @@ def load_prompt(name: str) -> str:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "environment": settings.environment}
+
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+                msg_type = message.get("type")
+                
+                if msg_type == "transcript_commit":
+                    # Process the committed transcript
+                    text = message.get("text", "")
+                    previous_context = message.get("previous_context", "")
+                    lecture_id = message.get("lecture_id", "default_lecture")
+                    
+                    if text:
+                        # Run the pipeline
+                        result = await pipeline_service.process_chunk(text, previous_context, lecture_id)
+                        
+                        # Send back the results
+                        await websocket.send_json({
+                            "type": "pipeline_result",
+                            "lecture_id": lecture_id,
+                            "results": result
+                        })
+                        
+                        # Also update local store if needed (e.g., CONCEPTS)
+                        new_concepts_data = result.get("concepts", [])
+                        if new_concepts_data:
+                            new_concepts_objs = [
+                                Concept(
+                                    keyword=c["keyword"], 
+                                    stem_concept=c["stem_concept"], 
+                                    source_chunk_id=message.get("chunk_id")
+                                ) 
+                                for c in new_concepts_data
+                            ]
+                            CONCEPTS.setdefault(lecture_id, []).extend(new_concepts_objs)
+
+            except json.JSONDecodeError:
+                pass
+            except Exception as e:
+                print(f"Error processing message: {e}")
+                await websocket.send_json({"type": "error", "message": str(e)})
+
+    except WebSocketDisconnect:
+        print(f"Client {client_id} disconnected")
+
 
 
 @app.post("/concepts/extract", response_model=ConceptExtractionResponse)
