@@ -143,7 +143,10 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
         const connectBackend = () => {
             if (backendSocketRef.current?.readyState === WebSocket.OPEN) return;
 
-            const backendSocket = new WebSocket("ws://127.0.0.1:8000/ws/user_1");
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const backendSocket = new WebSocket(`ws://127.0.0.1:8000/ws/user_1?token=${token}`);
             backendSocketRef.current = backendSocket;
 
             backendSocket.onopen = () => {

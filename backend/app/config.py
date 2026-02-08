@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     mongo_connection_string: str | None = Field(default=None, validation_alias="vector_db_url")
     credit_start_balance: int = 50
     transcript_embeddings_key: str | None = None
+    secret_key: str = "super-secret-key-change-me"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
 
 
 settings = Settings()

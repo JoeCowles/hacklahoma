@@ -1,54 +1,63 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 import json
 import time
-import asyncio
+import uuid
+from pathlib import Path
+from typing import Any
+
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError
+from pymongo import MongoClient
 
 from .config import settings
-from .services.gemini import GeminiClient
-from .services.elevenlabs import ElevenLabsClient
-from .services.youtube import YouTubeClient
-from .services.pipeline import PipelineService
-from .services.simulation import SimulationService
-from .services.quiz import QuizService
-# from .services.google_search import search_youtube_via_google
 from .schemas import (
-    TranscriptChunk,
-    Concept,
-    ConceptExtractionResponse,
-    VideoSearchRequest,
-    VideoSearchResponse,
-    VideoResult,
     AnimationRequest,
     AnimationResponse,
-    WalkthroughRequest,
-    WalkthroughResponse,
+    AuthLoginRequest,
+    AuthLoginResponse,
+    AuthRegisterRequest,
+    AuthRegisterResponse,
+    Class,
+    ClassListResponse,
+    Concept,
+    ConceptExtractionResponse,
+    CreateClassRequest,
+    CreateLectureRequest,
     CreditBalance,
     CreditSpendRequest,
     CreditSpendResponse,
-    ShareRequest,
-    ShareResponse,
-    AuthRegisterRequest,
-    AuthRegisterResponse,
-    AuthLoginRequest,
-    AuthLoginResponse,
+    Lecture,
+    LectureDetailsResponse,
+    LectureListResponse,
     OnboardingRequest,
     OnboardingResponse,
-    CreateLectureRequest,
-    Lecture,
-    LectureListResponse,
-    CreateClassRequest,
-    Class,
-    ClassListResponse,
-    CreateClassRequest,
-    Class,
-    ClassListResponse,
-    ClassListResponse,
-    LectureDetailsResponse,
+    ShareRequest,
+    ShareResponse,
+    TranscriptChunk,
     TranscriptItem,
+    VideoResult,
+    VideoSearchRequest,
+    VideoSearchResponse,
+    WalkthroughRequest,
+    WalkthroughResponse,
+    Flashcard,
+    Question,
+    Quiz,
 )
-from pymongo import MongoClient
-from pathlib import Path
+from .services.auth import (
+    create_access_token,
+    decode_access_token,
+    get_password_hash,
+    verify_password,
+)
+from .services.elevenlabs import ElevenLabsClient
+from .services.gemini import GeminiClient
+from .services.pipeline import PipelineService
+from .services.quiz import QuizService
+from .services.simulation import SimulationService
+from .services.youtube import YouTubeClient
 
 app = FastAPI(title="Interactable API", version="0.1.0")
 
@@ -56,7 +65,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"] ,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -82,7 +91,6 @@ if settings.mongo_connection_string:
         )
     except Exception as e:
         print(f"Failed to initialize default user: {e}")
-
 else:
     print("WARNING: MongoDB connection string not found. Database features will fail.")
     mongo_client = None
@@ -119,9 +127,87 @@ def load_prompt(name: str) -> str:
     return text
 
 
+# Auth Dependency
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = decode_access_token(token)
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+        
+    user = db.users.find_one({"user_id": user_id})
+    if user is None:
+        raise credentials_exception
+    return user
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "environment": settings.environment}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: dict = Depends(get_current_user)):
+    return {
+        "user_id": current_user["user_id"],
+        "email": current_user["email"],
+        "display_name": current_user.get("display_name"),
+        "credits": current_user.get("credits", 0)
+    }
+
+
+@app.post("/auth/register", response_model=AuthRegisterResponse)
+def register(payload: AuthRegisterRequest) -> AuthRegisterResponse:
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    # Check if user already exists
+    if db.users.find_one({"email": payload.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user_id = f"user_{uuid.uuid4()}"
+    hashed_password = get_password_hash(payload.password)
+    
+    user_doc = {
+        "user_id": user_id,
+        "email": payload.email,
+        "password": hashed_password,
+        "display_name": payload.display_name,
+        "credits": settings.credit_start_balance,
+        "created_at": time.time()
+    }
+    
+    db.users.insert_one(user_doc)
+    return AuthRegisterResponse(user_id=user_id, status="registered")
+
+
+@app.post("/auth/login", response_model=AuthLoginResponse)
+def login(payload: AuthLoginRequest) -> AuthLoginResponse:
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    user = db.users.find_one({"email": payload.email})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if not verify_password(payload.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    token = create_access_token(data={"sub": user["user_id"], "email": user["email"]})
+    return AuthLoginResponse(user_id=user["user_id"], token=token)
+
 
 async def run_simulation_background(websocket: WebSocket, simulation_service: SimulationService, sim_request: dict, lecture_id: str, previous_context: str, text: str):
     try:
@@ -160,10 +246,6 @@ async def run_simulation_background(websocket: WebSocket, simulation_service: Si
                     "timestamp": time.time()
                 }
                 db.simulations.insert_one(sim_doc)
-            else:
-                 # Minimal in-memory fallback for simulations if we want, or just skip
-                 pass
-
         except Exception as e:
             print(f"Could not send background simulation result (client likely disconnected): {e}")
     except Exception as e:
@@ -245,10 +327,6 @@ async def run_video_search_background(websocket: WebSocket, youtube_client: YouT
             return
 
         print(f"DEBUG: Starting background video search for: {query}")
-        # Search is synchronous, but running in a thread/executor is better if it blocks.
-        # Since we are in an async function, direct blocking call will block the event loop if not careful.
-        # However, for simplicity in this scaffold, we call it directly assuming it's fast enough or we accept the minor block.
-        # Ideally: await asyncio.to_thread(youtube_client.search, query, limit=2)
         video_results = await asyncio.to_thread(youtube_client.search, query, limit=2)
         
         for v in video_results:
@@ -544,6 +622,23 @@ async def process_transcript_message(websocket: WebSocket, message: dict):
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    # Check for token in query params
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001) # Unauthorized
+        return
+
+    try:
+        # Validate token
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.close(code=4001)
+            return
+    except Exception:
+        await websocket.close(code=4001)
+        return
+
     await websocket.accept()
     try:
         while True:
@@ -570,9 +665,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         print(f"Client {client_id} disconnected")
     except Exception as e:
         print(f"WebSocket session error: {e}")
-
-
-
 
 
 @app.post("/concepts/extract", response_model=ConceptExtractionResponse)
@@ -622,7 +714,7 @@ def extract_concepts(payload: TranscriptChunk) -> ConceptExtractionResponse:
             doc["lecture_id"] = payload.lecture_id
         db.concepts.insert_many(concept_docs)
     else:
-        # Fallback to in-memory if DB is down (or just fail, but for now fallback is okay or just skip)
+        # Fallback to in-memory if DB is down
         CONCEPTS.setdefault(payload.lecture_id, []).extend(new_concepts)
     
     return ConceptExtractionResponse(lecture_id=payload.lecture_id, new_concepts=new_concepts)
@@ -650,7 +742,7 @@ async def generate_animation(payload: AnimationRequest) -> AnimationResponse:
     if not settings.gemini_api_key:
         raise HTTPException(status_code=500, detail="Gemini API key is not configured")
 
-    # For on-demand, we might not have full context, but we can pass what we have
+    # For on-demand, we might not have full context
     context = f"Manual request for animation on: {payload.concept}"
     
     try:
@@ -703,48 +795,17 @@ def share_transcript(payload: ShareRequest) -> ShareResponse:
     return response
 
 
-@app.post("/auth/register", response_model=AuthRegisterResponse)
-def register(payload: AuthRegisterRequest) -> AuthRegisterResponse:
-    user_id = f"user_{len(USERS) + 1}"
-    USERS[user_id] = {
-        "email": payload.email,
-        "display_name": payload.display_name,
-    }
-    CREDITS.setdefault(user_id, settings.credit_start_balance)
-    return AuthRegisterResponse(user_id=user_id, status="registered")
-
-
-@app.post("/auth/login", response_model=AuthLoginResponse)
-def login(payload: AuthLoginRequest) -> AuthLoginResponse:
-    # Placeholder auth: no password checks in scaffold
-    user_id = next((uid for uid, info in USERS.items() if info["email"] == payload.email), None)
-    if not user_id:
-        raise HTTPException(status_code=404, detail="User not found")
-    token = f"token_{user_id}"
-    SESSIONS[token] = user_id
-    return AuthLoginResponse(user_id=user_id, token=token)
-
-
 @app.post("/users/onboarding", response_model=OnboardingResponse)
 def onboarding(payload: OnboardingRequest) -> OnboardingResponse:
-    if payload.user_id not in USERS:
-        raise HTTPException(status_code=404, detail="User not found")
+    # This might need updating to use DB if needed, but for now it's just a placeholder
     return OnboardingResponse(user_id=payload.user_id, status="saved")
 
 
 @app.post("/lectures/create", response_model=Lecture)
 def create_lecture(payload: CreateLectureRequest) -> Lecture:
-    # In a real app we'd validate against the authenticated user
-    # For now, we trust the payload or check against our basic USERS dict
-    if payload.student_id not in USERS:
-        # Check in DB if not in memory
-        if db is not None:
-             if not db.users.find_one({"user_id": payload.student_id}):
-                 raise HTTPException(status_code=404, detail="Student not found")
-        else:
-             raise HTTPException(status_code=404, detail="Student not found")
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
-    import uuid
     lecture_id = f"lecture_{uuid.uuid4()}"
     
     new_lecture = {
@@ -754,26 +815,20 @@ def create_lecture(payload: CreateLectureRequest) -> Lecture:
         "student_id": payload.student_id,
     }
 
-    if db is not None:
-        # Validate class exists
-        class_doc = db.classes.find_one({"id": payload.class_id})
-        if not class_doc:
-            raise HTTPException(status_code=404, detail="Class not found")
-        
-        # We can store some denormalized data if we want, but for now let's just store the reference
-        # Actually for simplicity let's stick to normalized and join on read
-        db.lectures.insert_one(new_lecture.copy())
-        
-        # Populate response with class details
-        return Lecture(
-            **new_lecture,
-            class_name=class_doc["name"],
-            professor=class_doc["professor"],
-            school=class_doc["school"],
-            class_time=class_doc["class_time"]
-        )
-    else:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    # Validate class exists
+    class_doc = db.classes.find_one({"id": payload.class_id})
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    db.lectures.insert_one(new_lecture.copy())
+    
+    return Lecture(
+        **new_lecture,
+        class_name=class_doc["name"],
+        professor=class_doc["professor"],
+        school=class_doc["school"],
+        class_time=class_doc["class_time"]
+    )
 
 
 @app.get("/lectures", response_model=LectureListResponse)
@@ -781,11 +836,8 @@ def get_lectures() -> LectureListResponse:
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
     
-    # In a real app, filtering by user_id would happen here
-    classes_map = {}
-    if db is not None:
-        classes_cursor = db.classes.find()
-        classes_map = {c["id"]: c for c in classes_cursor}
+    classes_cursor = db.classes.find()
+    classes_map = {c["id"]: c for c in classes_cursor}
 
     lectures_cursor = db.lectures.find()
     
@@ -860,7 +912,6 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
 
 @app.post("/classes", response_model=Class)
 def create_class(payload: CreateClassRequest) -> Class:
-    import uuid
     class_id = f"class_{uuid.uuid4()}"
     
     new_class = {
@@ -873,9 +924,6 @@ def create_class(payload: CreateClassRequest) -> Class:
 
     if db is not None:
         db.classes.insert_one(new_class.copy())
-    else:
-        # Fallback for dev without DB
-        print("Warning: DB not available, class not persisted")
     
     return Class(**new_class)
 
@@ -883,7 +931,6 @@ def create_class(payload: CreateClassRequest) -> Class:
 @app.get("/classes", response_model=ClassListResponse)
 def get_classes() -> ClassListResponse:
     if db is None:
-         # Return empty list or error? Let's return empty list for cleaner UI if DB down
          return ClassListResponse(classes=[])
     
     classes_cursor = db.classes.find()

@@ -8,3 +8,5 @@ google-genai
 yt-dlp
 pymongo
 dnspython
+bcrypt
+python-jose[cryptography]

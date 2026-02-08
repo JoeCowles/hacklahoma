@@ -6,6 +6,7 @@ import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LectureForm } from '../components/LectureForm';
 import { ClassForm } from '../components/ClassForm';
+import { useRouter } from 'next/navigation';
 
 interface Lecture {
   id: string;
@@ -26,11 +27,18 @@ interface Class {
   class_time: string;
 }
 
+interface User {
+  user_id: string;
+  email: string;
+  display_name: string;
+  credits: number;
+}
+
 import { KeyConcepts, Concept, Flashcard, Quiz } from '../components/KeyConcepts';
 
-const lecturesData = [];
-
 export default function LectureAssistantDashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('classes');
   const [lectures, setLectures] = useState<Lecture[]>([]);
@@ -40,6 +48,36 @@ export default function LectureAssistantDashboard() {
   const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
   const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
   const [isClassFormOpen, setIsClassFormOpen] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+        const res = await fetch(`${baseUrl}/users/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+        } else {
+          localStorage.removeItem('token');
+          router.push('/login');
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    };
+
+    fetchUser();
+  }, [router]);
 
   const {
     isRecording,
@@ -62,7 +100,6 @@ export default function LectureAssistantDashboard() {
   } = useRealtimeTranscription(currentLecture?.id || null);
 
   // Map backend concepts to UI format
-  // The hook returns concepts as any[], we cast/map them to our Concept interface
   const allConcepts: Concept[] = concepts.map((c: any) => ({
     id: c.id,
     keyword: c.keyword,
@@ -85,10 +122,16 @@ export default function LectureAssistantDashboard() {
     status: q.status,
     questions: q.questions
   }));
+
   const fetchLectures = async () => {
     try {
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
-      const res = await fetch(`${baseUrl}/lectures`);
+      const token = localStorage.getItem('token');
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/lectures`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setLectures(data.lectures);
@@ -100,8 +143,13 @@ export default function LectureAssistantDashboard() {
 
   const fetchClasses = async () => {
     try {
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
-      const res = await fetch(`${baseUrl}/classes`);
+      const token = localStorage.getItem('token');
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/classes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setClasses(data.classes);
@@ -113,8 +161,13 @@ export default function LectureAssistantDashboard() {
 
   const loadLectureDetails = async (lectureId: string) => {
     try {
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
-      const res = await fetch(`${baseUrl}/lectures/${lectureId}`);
+      const token = localStorage.getItem('token');
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/lectures/${lectureId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setCurrentLecture(data.lecture);
@@ -134,23 +187,18 @@ export default function LectureAssistantDashboard() {
   };
 
   useEffect(() => {
-    if (activeSection === 'lectures') {
-      fetchLectures();
-    } else if (activeSection === 'classes') {
-      fetchClasses();
+    if (user) {
+      if (activeSection === 'lectures') {
+        fetchLectures();
+      } else if (activeSection === 'classes') {
+        fetchClasses();
+      }
     }
-  }, [activeSection]);
+  }, [activeSection, user]);
 
   const handleConceptClick = (concept: Concept) => {
-    console.log("Concept Clicked - ID:", concept.id);
     setSelectedConcept(concept);
   };
-
-  // Debug: Log all concepts IDs to check for duplicates
-  console.log("All Concept IDs:", allConcepts.map(c => c.id));
-  if (selectedConcept) {
-    console.log("Currently Selected ID:", selectedConcept.id);
-  }
 
   const handleClosePanel = () => {
     setSelectedConcept(null);
@@ -158,6 +206,12 @@ export default function LectureAssistantDashboard() {
 
   const handleNavigation = (section: 'live-learn' | 'lectures' | 'classes') => {
     setActiveSection(section);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    router.push('/login');
   };
 
   // Filter videos and simulations for selected concept
@@ -168,11 +222,12 @@ export default function LectureAssistantDashboard() {
     )
     : [];
 
-  // Try ID match first, then keyword fallback
   const relatedSimulation = selectedConcept
     ? (simulations.find(s => s.concept_id === selectedConcept.id) ||
       simulations.find(s => s.concept.toLowerCase() === selectedConcept.keyword.toLowerCase()))
     : null;
+
+  if (!user) return null;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-violet-500/50 selection:text-white h-full">
@@ -223,19 +278,21 @@ export default function LectureAssistantDashboard() {
         </div>
 
         <div className="mt-auto">
-          <div className="bg-white/5 backdrop-blur-md border border-white/5 p-4 rounded-2xl flex items-center gap-4 cursor-pointer group transition-all hover:bg-white/10">
+          <div 
+            onClick={handleLogout}
+            className="bg-white/5 backdrop-blur-md border border-white/5 p-4 rounded-2xl flex items-center gap-4 cursor-pointer group transition-all hover:bg-white/10"
+          >
             <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden ring-2 ring-white/5">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" className="w-full h-full object-cover" />
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.display_name}`} alt="User" className="w-full h-full object-cover" />
             </div>
             <div className="hidden md:block overflow-hidden">
-              <p className="text-sm font-bold text-neutral-800 truncate group-hover:text-violet-600 transition-colors">Student User</p>
-              <p className="text-xs text-neutral-500 truncate group-hover:text-neutral-600 transition-colors">student@edu.com</p>
+              <p className="text-sm font-bold text-neutral-800 truncate group-hover:text-red-500 transition-colors">{user.display_name}</p>
+              <p className="text-xs text-neutral-500 truncate group-hover:text-neutral-600 transition-colors">{user.email}</p>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content Area */}
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 pt-6 pr-6 pb-0 pl-0">
 
@@ -291,11 +348,12 @@ export default function LectureAssistantDashboard() {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-4 py-2 bg-violet-500/10 rounded-xl border border-violet-500/20">
+              <span className="material-symbols-outlined text-violet-600 text-lg">payments</span>
+              <span className="font-bold text-violet-700">{user.credits}</span>
+            </div>
             <button className="p-3 rounded-xl hover:bg-black/5 text-neutral-500 hover:text-neutral-800 transition-all hover:scale-105 active:scale-95">
               <span className="material-symbols-outlined text-xl">notifications</span>
-            </button>
-            <button className="p-3 rounded-xl hover:bg-black/5 text-neutral-500 hover:text-neutral-800 transition-all hover:scale-105 active:scale-95">
-              <span className="material-symbols-outlined text-xl">help</span>
             </button>
           </div>
         </header>

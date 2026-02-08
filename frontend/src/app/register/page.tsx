@@ -4,36 +4,34 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function LoginPage() {
+export default function RegisterPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [displayName, setDisplayName] = useState("");
     const [error, setError] = useState("");
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
         
         try {
             const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-            const res = await fetch(`${baseUrl}/auth/login`, {
+            const res = await fetch(`${baseUrl}/auth/register`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, password, display_name: displayName }),
             });
 
             if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("user_id", data.user_id);
-                router.push("/");
+                router.push("/login");
             } else {
                 const data = await res.json();
-                setError(data.detail || "Login failed");
+                setError(data.detail || "Registration failed");
             }
         } catch (err) {
             setError("Could not connect to server");
@@ -84,16 +82,28 @@ export default function LoginPage() {
                         >
                             <span className="material-symbols-outlined text-3xl text-white">school</span>
                         </motion.div>
-                        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome Back</h1>
-                        <p className="text-gray-400">Sign in to your dashboard</p>
+                        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Create Account</h1>
+                        <p className="text-gray-400">Join the learning revolution</p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-5">
+                    <form onSubmit={handleRegister} className="space-y-5">
                         {error && (
                             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm text-center">
                                 {error}
                             </div>
                         )}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-400 ml-1 uppercase tracking-wider">Full Name</label>
+                            <input
+                                type="text"
+                                value={displayName}
+                                onChange={(e) => setDisplayName(e.target.value)}
+                                placeholder="John Doe"
+                                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                                required
+                            />
+                        </div>
+
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-gray-400 ml-1 uppercase tracking-wider">Email</label>
                             <input
@@ -118,14 +128,6 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        <div className="flex items-center justify-between text-sm">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input type="checkbox" className="w-4 h-4 rounded border-gray-600 bg-black/20 checked:bg-violet-500 transition-colors" />
-                                <span className="text-gray-400 group-hover:text-gray-300 transition-colors">Remember me</span>
-                            </label>
-                            <a href="#" className="text-violet-400 hover:text-violet-300 transition-colors">Forgot password?</a>
-                        </div>
-
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -136,15 +138,15 @@ export default function LoginPage() {
                                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <span>Sign In</span>
-                                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                                    <span>Sign Up</span>
+                                    <span className="material-symbols-outlined text-lg">person_add</span>
                                 </>
                             )}
                         </motion.button>
                     </form>
 
                     <p className="mt-8 text-center text-sm text-white">
-                        Don&apos;t have an account? <a href="/register" className="text-white hover:text-gray-300 transition-colors font-bold">Create account</a>
+                        Already have an account? <a href="/login" className="text-white hover:text-gray-300 transition-colors font-bold">Sign in</a>
                     </p>
                 </div>
             </motion.div>
