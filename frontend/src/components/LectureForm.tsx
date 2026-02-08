@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 interface LectureFormProps {
     onSuccess: () => void;
     onCancel: () => void;
+    defaultClassId?: string;
 }
 
 interface ClassOption {
@@ -14,9 +15,9 @@ interface ClassOption {
     school: string;
 }
 
-export function LectureForm({ onSuccess, onCancel }: LectureFormProps) {
+export function LectureForm({ onSuccess, onCancel, defaultClassId }: LectureFormProps) {
     const [classes, setClasses] = useState<ClassOption[]>([]);
-    const [selectedClassId, setSelectedClassId] = useState("");
+    const [selectedClassId, setSelectedClassId] = useState(defaultClassId || "");
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,11 @@ export function LectureForm({ onSuccess, onCancel }: LectureFormProps) {
                 if (response.ok) {
                     const data = await response.json();
                     setClasses(data.classes);
-                    if (data.classes.length > 0) {
+
+                    // If defaultClassId is provided, use it. Otherwise default to first class
+                    if (defaultClassId) {
+                        setSelectedClassId(defaultClassId);
+                    } else if (data.classes.length > 0 && !selectedClassId) {
                         setSelectedClassId(data.classes[0].id);
                     }
                 }
@@ -38,7 +43,7 @@ export function LectureForm({ onSuccess, onCancel }: LectureFormProps) {
             }
         };
         fetchClasses();
-    }, []);
+    }, [defaultClassId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -98,7 +103,8 @@ export function LectureForm({ onSuccess, onCancel }: LectureFormProps) {
                                 required
                                 value={selectedClassId}
                                 onChange={(e) => setSelectedClassId(e.target.value)}
-                                className="w-full rounded-lg bg-neutral-800 p-2.5 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-[16px] border-transparent"
+                                disabled={!!defaultClassId}
+                                className={`w-full rounded-lg bg-neutral-800 p-2.5 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-[16px] border-transparent ${defaultClassId ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 {classes.map((cls) => (
                                     <option key={cls.id} value={cls.id}>
