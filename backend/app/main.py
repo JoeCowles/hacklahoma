@@ -352,6 +352,15 @@ async def run_video_search_background(websocket: WebSocket, youtube_client: YouT
         print(f"DEBUG: Starting background video search for: {query}")
         video_results = await asyncio.to_thread(youtube_client.search, query, limit=2)
         
+        # Deduplication by URL
+        if db is not None:
+            unique_video_results = []
+            for v in video_results:
+                existing = db.videos.find_one({"lecture_id": lecture_id, "url": v["url"]})
+                if not existing:
+                    unique_video_results.append(v)
+            video_results = unique_video_results
+
         for v in video_results:
             v["context_concept"] = video_request.get("context_concept")
             v["context_concept_id"] = video_request.get("context_concept_id")
@@ -400,6 +409,15 @@ async def run_google_search_background(websocket: WebSocket, google_search_servi
         rich_query = f"{query} educational reference LibreTexts"
         reference_results = await google_search_service.search_references(rich_query)
         
+        # Deduplication by URL
+        if db is not None:
+            unique_reference_results = []
+            for r in reference_results:
+                existing = db.references.find_one({"lecture_id": lecture_id, "url": r["url"]})
+                if not existing:
+                    unique_reference_results.append(r)
+            reference_results = unique_reference_results
+
         for r in reference_results:
             r["context_concept"] = text_request.get("context_concept")
             r["context_concept_id"] = text_request.get("context_concept_id")
@@ -978,50 +996,64 @@ def get_lectures() -> LectureListResponse:
 @app.get("/lectures/search", response_model=LectureSearchResponse)
 def search_lectures(query: str = Query("", min_length=1)) -> LectureSearchResponse:
     """
-    Search lectures by simple word matching in:
-    - Title (class name)
-    - First transcript chunk (lecture transcription)
+    Search lectures using Atlas Search on transcripts with 'chunk_search' index.
     """
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    words = [w.strip() for w in query.split() if w.strip()]
-    if not words:
+    if not query.strip():
         return LectureSearchResponse(results=[])
 
-    found_lecture_ids: set[str] = set()
+    try:
+        # Atlas Search pipeline on transcripts collection using the provided 'chunk_search' index
+        pipeline = [
+            {
+                "$search": {
+                    "index": "chunk_search",
+                    "text": {
+                        "query": query,
+                        "path": "text",
+                        "fuzzy": {
+                            "maxEdits": 1,
+                            "prefixLength": 0
+                        }
+                    }
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$lecture_id",
+                    "searchScore": {"$max": {"$meta": "searchScore"}}
+                }
+            },
+            {
+                "$sort": {"searchScore": -1}
+            },
+            {
+                "$limit": 20
+            }
+        ]
+        
+        # Collect unique lecture IDs ordered by search relevance
+        found_lecture_ids = [doc["_id"] for doc in db.transcripts.aggregate(pipeline)]
+        
+        if not found_lecture_ids:
+            return LectureSearchResponse(results=[])
 
-    # 1. Title: match words in class name (classes.name)
-    and_name_regex = [{"name": {"$regex": w, "$options": "i"}} for w in words]
-    class_matches = db.classes.find({"$and": and_name_regex}, {"id": 1})
-    for class_match in class_matches:
-        class_id = class_match["id"]
-        for l in db.lectures.find({"class_id": class_id}, {"id": 1}):
-            found_lecture_ids.add(l["id"])
+        results_list: list[LectureDetailsResponse] = []
+        for lecture_id in found_lecture_ids:
+            try:
+                # Reuse existing detail retrieval logic
+                lecture_details = get_lecture_details(lecture_id)
+                results_list.append(lecture_details)
+            except HTTPException:
+                continue
 
-    # 2. First transcript chunk: get first transcript per lecture, then word-match on its text
-    and_text_regex = [{"first_text": {"$regex": w, "$options": "i"}} for w in words]
-    pipeline = [
-        {"$sort": {"lecture_id": 1, "timestamp": 1}},
-        {"$group": {"_id": "$lecture_id", "first_text": {"$first": "$text"}}},
-        {"$match": {"$and": and_text_regex}},
-    ]
-    for doc in db.transcripts.aggregate(pipeline):
-        found_lecture_ids.add(doc["_id"])
-
-    if not found_lecture_ids:
+        return LectureSearchResponse(results=results_list)
+    except Exception as e:
+        print(f"Atlas Search Error: {e}")
+        # Return empty list if search fails (e.g., index not yet active)
         return LectureSearchResponse(results=[])
-
-    results_list: list[LectureDetailsResponse] = []
-    for lecture_id in found_lecture_ids:
-        try:
-            lecture_details = get_lecture_details(lecture_id)
-            results_list.append(lecture_details)
-        except HTTPException as e:
-            print(f"Warning: Could not retrieve details for lecture_id {lecture_id}: {e.detail}")
-            continue
-
-    return LectureSearchResponse(results=results_list)
 
 
 @app.get("/lectures/{lecture_id}", response_model=LectureDetailsResponse)
@@ -1062,7 +1094,14 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
     
     # 3. Get Videos
     videos_cursor = db.videos.find({"lecture_id": lecture_id})
-    videos = [VideoResult(**v) for v in videos_cursor]
+    videos_all = [VideoResult(**v) for v in videos_cursor]
+    # Deduplicate by URL
+    videos = []
+    seen_video_urls = set()
+    for v in videos_all:
+        if v.url not in seen_video_urls:
+            videos.append(v)
+            seen_video_urls.add(v.url)
 
     # 4. Get Simulations
     sims_cursor = db.simulations.find({"lecture_id": lecture_id, "status": "ready"})
@@ -1074,7 +1113,14 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
 
     # 6. Get Reference Texts
     references_cursor = db.references.find({"lecture_id": lecture_id})
-    references = [ReferenceText(**r) for r in references_cursor]
+    references_all = [ReferenceText(**r) for r in references_cursor]
+    # Deduplicate by URL
+    references = []
+    seen_ref_urls = set()
+    for r in references_all:
+        if r.url not in seen_ref_urls:
+            references.append(r)
+            seen_ref_urls.add(r.url)
 
     return LectureDetailsResponse(
         lecture=lecture,

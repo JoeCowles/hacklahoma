@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 
 export interface TranscriptionItem {
     time: string;
@@ -22,7 +22,7 @@ interface UseRealtimeTranscriptionReturn {
     flashcards: any[];
     quizzes: any[];
     referenceTexts: any[];
-    setConcepts: React.Dispatch<React.SetStateAction<any[]>>;
+    setConcepts: (val: any[] | ((prev: any[]) => any[])) => void;
     setVideos: React.Dispatch<React.SetStateAction<any[]>>;
     setSimulations: React.Dispatch<React.SetStateAction<any[]>>;
     setTranscripts: React.Dispatch<React.SetStateAction<TranscriptionItem[]>>;
@@ -88,12 +88,29 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
     const [error, setError] = useState<string | null>(null);
 
     // Pipeline states
-    const [concepts, setConcepts] = useState<any[]>([]);
+    const [conceptsMap, setConceptsMap] = useState<Map<string, any>>(new Map());
     const [videos, setVideos] = useState<any[]>([]);
     const [simulations, setSimulations] = useState<any[]>([]);
     const [flashcards, setFlashcards] = useState<any[]>([]);
     const [quizzes, setQuizzes] = useState<any[]>([]);
     const [referenceTexts, setReferenceTexts] = useState<any[]>([]);
+
+    const concepts = useMemo(() => Array.from(conceptsMap.values()), [conceptsMap]);
+
+    const setConcepts = useCallback((val: any[] | ((prev: any[]) => any[])) => {
+        setConceptsMap(prevMap => {
+            const prevArray = Array.from(prevMap.values());
+            const nextArray = typeof val === 'function' ? val(prevArray) : val;
+            const nextMap = new Map();
+            nextArray.forEach((c: any) => {
+                const key = c.keyword.toLowerCase();
+                if (!nextMap.has(key)) {
+                    nextMap.set(key, c);
+                }
+            });
+            return nextMap;
+        });
+    }, []);
 
     const socketRef = useRef<WebSocket | null>(null);
     const backendSocketRef = useRef<WebSocket | null>(null);
@@ -163,18 +180,18 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                         const results = data.results;
                         console.log("Pipeline Results received:", results);
                         if (results.concepts) {
-                            setConcepts(prev => {
-                                const existingKeywords = new Set(prev.map(c => c.keyword.toLowerCase()));
-                                const existingIds = new Set(prev.map(c => c.id));
-
-                                const newConcepts = results.concepts.filter((c: any) =>
-                                    !existingKeywords.has(c.keyword.toLowerCase()) && !existingIds.has(c.id)
-                                );
-                                return [...prev, ...newConcepts];
-                            });
+                            setConcepts(prev => [...prev, ...results.concepts]);
                         }
                         if (results.videos) {
-                            setVideos(prev => [...prev, ...results.videos]);
+                            setVideos(prev => {
+                                const next = [...prev];
+                                results.videos.forEach((newVideo: any) => {
+                                    if (!next.some(v => v.url === newVideo.url)) {
+                                        next.push(newVideo);
+                                    }
+                                });
+                                return next;
+                            });
                         }
                         if (results.simulations) {
                             setSimulations(prev => {
