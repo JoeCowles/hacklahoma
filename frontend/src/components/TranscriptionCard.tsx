@@ -66,7 +66,7 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
         console.error("Simulation Generation Failed:", response.status, errorText);
         throw new Error(`Failed to generate simulation: ${response.status} ${errorText}`);
       }
-      
+
       const data = await response.json();
       setSimulationCode(data.code);
     } catch (err) {
@@ -78,14 +78,10 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
   };
 
   return (
-<<<<<<< HEAD
-    <div className="flex-[3] flex flex-col h-full overflow-hidden glass-panel rounded-2xl relative">
-=======
-    <div 
+    <div
       className="flex-[3] flex flex-col border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative animate-in fade-in duration-300 h-full overflow-hidden"
       onMouseUp={handleMouseUp}
     >
->>>>>>> cb2d02a (sims)
       <TranscriptionHeader
         isRecording={isRecording}
         onStart={startRecording}
@@ -124,9 +120,9 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            style={{ 
-              position: 'fixed', 
-              left: selection.x, 
+            style={{
+              position: 'fixed',
+              left: selection.x,
               top: selection.y - 10,
               transform: 'translateX(-50%) translateY(-100%)',
               zIndex: 100
@@ -159,9 +155,9 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
                   </button>
                 </div>
                 <div className="w-[350px] h-[300px] bg-white rounded-lg overflow-hidden border border-gray-100">
-                  <iframe 
-                    srcDoc={simulationCode} 
-                    className="w-full h-full border-none" 
+                  <iframe
+                    srcDoc={simulationCode}
+                    className="w-full h-full border-none"
                     sandbox="allow-scripts"
                   />
                 </div>
@@ -193,7 +189,7 @@ function TranscriptionHeader({
           Lecture Transcription
           {isRecording && (
             <motion.span
-              animate={{ opacity: [1, 0.4, 1], scale: [1, 1.2, 1] }}
+              animate={{ opacity: [1, 0.4, 1] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
               className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-[0_0_12px_rgba(239,68,68,0.8)]"
             />
@@ -203,7 +199,6 @@ function TranscriptionHeader({
 
       <div className="flex items-center gap-4">
         <motion.button
-          layout
           onClick={isRecording ? onStop : onStart}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
