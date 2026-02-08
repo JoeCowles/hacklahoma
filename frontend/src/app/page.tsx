@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface KeyConcept {
   id: string;
@@ -14,37 +15,37 @@ const keyConceptsData: KeyConcept[] = [
   {
     id: 'wave-particle',
     title: 'Wave-Particle Duality',
-    summary: 'The wave-particle duality is a fundamental concept of quantum mechanics that suggests that every particle or quantum entity may be described as either a particle or a wave. It expresses the inability of the classical concepts "particle" or "wave" to fully describe the behavior of quantum-scale objects. As Albert Einstein wrote: "It seems as though we must use sometimes the one theory and sometimes the other, while at times we may use either. We are faced with a new kind of difficulty. We have two contradictory pictures of reality; separately neither of them fully explains the phenomena of light, but together they do."',
+    summary: 'The wave-particle duality is a fundamental concept of quantum mechanics that suggests that every particle or quantum entity may be described as either a particle or a wave.',
     type: 'concept'
   },
   {
     id: 'quantum-mechanics',
     title: 'Quantum Mechanics',
-    summary: 'Quantum mechanics is a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles. It is the foundation of all quantum physics including quantum chemistry, quantum field theory, quantum technology, and quantum information science.',
+    summary: 'Quantum mechanics is a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles.',
     type: 'concept'
   },
   {
     id: 'schrodinger-equation',
     title: 'Schrödinger Equation',
-    summary: 'The Schrödinger equation is a linear partial differential equation that governs the wave function of a quantum-mechanical system. It is a key result in quantum mechanics, and its discovery was a significant landmark in the development of the subject. The equation is named after Erwin Schrödinger, who postulated the equation in 1925, and published it in 1926.',
+    summary: 'The Schrödinger equation is a linear partial differential equation that governs the wave function of a quantum-mechanical system.',
     type: 'concept'
   },
   {
     id: 'particle-physics',
     title: 'Particle Physics',
-    summary: 'Particle physics is a branch of physics that studies the nature of the particles that constitute matter and radiation. Although the word particle can refer to various types of very small objects, particle physics usually investigates the irreducibly smallest detectable particles and the fundamental interactions necessary to explain their behavior.',
+    summary: 'Particle physics is a branch of physics that studies the nature of the particles that constitute matter and radiation.',
     type: 'concept'
   },
   {
     id: 'classical-concepts',
     title: 'Classical Concepts',
-    summary: 'Classical physics mainly includes the theories of mechanics, electromagnetism, and thermodynamics. These theories were developed before the 20th century. In classical physics, energy and matter are considered separate entities. However, in quantum physics, they are considered to be two forms of the same entity.',
+    summary: 'Classical physics mainly includes the theories of mechanics, electromagnetism, and thermodynamics.',
     type: 'concept'
   },
   {
     id: 'wave-function',
     title: 'Wave Function',
-    summary: 'A wave function in quantum physics is a mathematical description of the quantum state of an isolated quantum system. The wave function is a complex-valued probability amplitude, and the probabilities for the possible results of measurements made on the system can be derived from it. The most common symbols for a wave function are the Greek letters ψ and Ψ (lower-case and capital psi, respectively).',
+    summary: 'A wave function in quantum physics is a mathematical description of the quantum state of an isolated quantum system.',
     type: 'concept'
   }
 ];
@@ -59,7 +60,6 @@ const lecturesData = [
 
 export default function LectureAssistantDashboard() {
   const [selectedConcept, setSelectedConcept] = useState<KeyConcept | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures'>('live-learn');
 
   const handleConceptClick = (conceptId: string) => {
@@ -73,285 +73,271 @@ export default function LectureAssistantDashboard() {
     setSelectedConcept(null);
   };
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
   const handleNavigation = (section: 'live-learn' | 'lectures') => {
     setActiveSection(section);
-    setIsMenuOpen(false);
   };
 
   return (
-    <>
-      {/* Navigation Drawer */}
-      <div className={`fixed inset-y-0 left-0 z-[60] w-64 bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out border-r border-gray-200 dark:border-slate-800 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <h2 className="font-bold text-lg">Menu</h2>
-          <button onClick={toggleMenu} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <nav className="p-4 space-y-2">
-          <button
-            onClick={() => handleNavigation('live-learn')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeSection === 'live-learn' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-[#616f89] dark:text-slate-400'}`}
-          >
-            <span className="material-symbols-outlined">cast_for_education</span>
-            Live Learn
-          </button>
-          <button
-            onClick={() => handleNavigation('lectures')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeSection === 'lectures' ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-[#616f89] dark:text-slate-400'}`}
-          >
-            <span className="material-symbols-outlined">class</span>
-            Lectures
-          </button>
-        </nav>
+    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-fuchsia-500/30 h-full">
+
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 pointer-events-none h-full">
+        <motion.div
+          animate={{
+            scale: [1, 1.1, 1],
+            translateY: [0, -20, 0],
+            opacity: [0.2, 0.3, 0.2]
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[-10%] left-[20%] w-[800px] h-[800px] bg-violet-900/20 rounded-full blur-[120px]"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            translateY: [0, 30, 0],
+            opacity: [0.1, 0.2, 0.1]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute bottom-[-10%] right-[10%] w-[600px] h-[600px] bg-fuchsia-900/20 rounded-full blur-[100px]"
+        />
       </div>
 
-      {/* Overlay Backdrop */}
-      {isMenuOpen && (
-        <div onClick={toggleMenu} className="fixed inset-0 z-[55] bg-black/20 backdrop-blur-sm transition-opacity"></div>
-      )}
-
-      {/* Top Navigation Bar */}
-      <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={toggleMenu} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-[#616f89]">
-              <span className="material-symbols-outlined">menu</span>
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="bg-primary p-1.5 rounded-lg text-white">
-                <span className="material-symbols-outlined text-2xl">school</span>
-              </div>
-              <h1 className="text-xl font-bold tracking-tight">Lecture Assistant</h1>
-            </div>
-            {activeSection === 'live-learn' && (
-              <>
-                <div className="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-2 hidden md:block"></div>
-                <div className="hidden md:flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold truncate max-w-[200px]">Quantum Physics 101</span>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
-                      LIVE
-                    </div>
-                  </div>
-                  <p className="text-xs text-[#616f89] dark:text-slate-400">Prof. Julian Barnes • 00:45:22</p>
-                </div>
-              </>
-            )}
+      {/* Floating Sidebar */}
+      <nav className="w-20 md:w-72 z-50 flex flex-col p-6 pb-0 gap-8 shrink-0 backdrop-blur-sm h-screen">
+        <div className="flex items-center gap-4 px-2">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-600/20 shrink-0 ring-1 ring-white/10">
+            <span className="material-symbols-outlined text-white text-2xl">school</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-6 mr-6">
-              <a className="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
-              <a className="text-sm font-medium hover:text-primary transition-colors" href="#">History</a>
-              <a className="text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+          <h1 className="font-bold text-xl tracking-tight hidden md:block text-white">LearnStream</h1>
+        </div>
+
+        <div className="flex flex-col gap-3 mt-4">
+          <SidebarItem
+            active={activeSection === 'live-learn'}
+            icon="cast_for_education"
+            label="Live Learn"
+            onClick={() => handleNavigation('live-learn')}
+          />
+          <SidebarItem
+            active={activeSection === 'lectures'}
+            icon="class"
+            label="Lectures"
+            onClick={() => handleNavigation('lectures')}
+          />
+          <SidebarItem active={false} icon="analytics" label="Analytics" />
+          <SidebarItem active={false} icon="settings" label="Settings" />
+        </div>
+
+        <div className="mt-auto">
+          <div className="glass-card p-4 rounded-2xl flex items-center gap-4 cursor-pointer group border border-white/10 hover:border-white/20 transition-all hover:bg-white/10">
+            <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden ring-2 ring-white/20">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" className="w-full h-full object-cover" />
             </div>
-            {activeSection === 'live-learn' && (
-              <button className="flex items-center gap-2 px-4 h-10 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
-                <span className="material-symbols-outlined text-lg">download</span>
-                <span>Export Transcript</span>
-              </button>
-            )}
-            <div className="size-10 rounded-full overflow-hidden border-2 border-primary/20 bg-gray-100 dark:bg-slate-800">
-              <img alt="User profile avatar icon" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIVAqHgSOAHJfcUBhDu4ipaIfZWLXUh9AwBZbW8WXhiG3FtXZgvj7FDR7EScQVqFCgU0vlaLru9MFcN66GzsqByoz6PviTBNeaZ57fWVwADFEI-5vwP2ZE9zZPVMM7rmVE16azyPAXXPwq5DQ9n0PbFu7MG4NmlajV-CEc2_oGilRniLgCMcqTznLKadjhdNrJoukLBPM8g12oTorLRzMNTZ-9R61EiHqmIhxW0_o61Vnz5QhKzQT4IXWCSL4xZEpq1k-OlydCkSsZ" />
+            <div className="hidden md:block overflow-hidden">
+              <p className="text-sm font-bold text-white truncate group-hover:text-violet-200 transition-colors">Student User</p>
+              <p className="text-xs text-gray-400 truncate group-hover:text-gray-300 transition-colors">student@edu.com</p>
             </div>
           </div>
         </div>
-      </header>
+      </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full flex overflow-hidden h-[calc(100vh-4rem)]">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 pt-6 pr-6 pb-0 pl-0">
 
-        {/* ======================= */}
-        {/* LECTURES SECTION        */}
-        {/* ======================= */}
-        {activeSection === 'lectures' && (
-          <div className="flex-1 flex flex-col w-full bg-gray-50 dark:bg-black/5 p-8 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-300">
-            <div className="max-w-6xl mx-auto w-full">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-3xl font-bold text-[#111318] dark:text-white">Lectures</h2>
-                  <p className="text-[#616f89] dark:text-slate-400 mt-1">Manage your courses and view past recordings.</p>
+        {/* Header Bar */}
+        <header className="h-20 flex items-center justify-between px-8 mb-2 shrink-0">
+          <div className="flex items-center gap-6">
+            {activeSection === 'live-learn' && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-5"
+              >
+                <h2 className="text-2xl font-bold text-white tracking-tight">Quantum Physics 101</h2>
+                <div className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-2.5 shadow-sm shadow-red-500/5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                  </span>
+                  <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Live</span>
                 </div>
-                <button className="flex items-center gap-2 px-6 h-12 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95">
-                  <span className="material-symbols-outlined">add</span>
-                  Add Class
-                </button>
-              </div>
+              </motion.div>
+            )}
+            {activeSection === 'lectures' && (
+              <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
+                My Lectures
+              </motion.h2>
+            )}
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Create New Card (optional visual cue) */}
-                <div className="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-4 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer group min-h-[200px]">
-                  <div className="size-16 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-white dark:group-hover:bg-slate-700 transition-colors">
-                    <span className="material-symbols-outlined text-3xl text-gray-400 group-hover:text-primary transition-colors">add</span>
+          <div className="flex items-center gap-4">
+            <button className="p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95">
+              <span className="material-symbols-outlined text-xl">notifications</span>
+            </button>
+            <button className="p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95">
+              <span className="material-symbols-outlined text-xl">help</span>
+            </button>
+          </div>
+        </header>
+
+
+        <div className="flex-1 overflow-hidden rounded-t-[2rem] rounded-b-none bg-black/40 border-x border-t border-b-0 border-white/5 backdrop-blur-md shadow-2xl flex flex-col relative mx-2">
+
+          {activeSection === 'lectures' && (
+            <div className="p-10 overflow-y-auto custom-scrollbar h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {/* Create New Class Card */}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer group min-h-[220px]"
+                >
+                  <div className="size-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors ring-1 ring-white/10 group-hover:ring-violet-500/30">
+                    <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-violet-400 transition-colors">add</span>
                   </div>
-                  <p className="font-bold text-[#616f89] group-hover:text-primary transition-colors">Create New Class</p>
-                </div>
+                  <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Join New Class</p>
+                </motion.div>
 
                 {lecturesData.map((lecture) => (
-                  <div key={lecture.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${lecture.status === 'Live' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                        lecture.status === 'Upcoming' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                          'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
-                        }`}>
-                        {lecture.status}
-                      </div>
-                      <button className="text-gray-400 hover:text-primary transition-colors">
-                        <span className="material-symbols-outlined">more_vert</span>
-                      </button>
-                    </div>
-                    <h3 className="font-bold text-lg text-[#111318] dark:text-white mb-1 group-hover:text-primary transition-colors line-clamp-1">{lecture.title}</h3>
-                    <p className="text-sm text-[#616f89] dark:text-slate-400 mb-6">{lecture.instructor}</p>
-
-                    <div className="flex items-center justify-between text-xs font-medium text-[#616f89] dark:text-slate-500 pt-4 border-t border-gray-50 dark:border-slate-800">
-                      <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-base">calendar_today</span>
-                        {lecture.date}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-base">schedule</span>
-                        {lecture.duration}
-                      </div>
-                    </div>
-                  </div>
+                  <LectureCard key={lecture.id} lecture={lecture} />
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ======================= */}
-        {/* LIVE LEARN SECTION      */}
-        {/* ======================= */}
-        {activeSection === 'live-learn' && (
-          <>
-            {/* Left Section: Transcription OR Key Concept Detail */}
-            {/* We use conditional rendering to swap them, occupying the same flex space */}
-
-            {/* Transcription Panel */}
-            {!selectedConcept && <TranscriptionCard />}
-
-            {/* Key Concept Detail Panel (Replaces Transcription) */}
-            {selectedConcept && (
-              <div className="flex-[3] flex flex-col border-r border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/30 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                {/* Compact Header */}
-                <div className="px-6 py-3 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 sticky top-0 z-10 h-14 shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-1.5 rounded text-primary">
-                      <span className="material-symbols-outlined text-lg">lightbulb</span>
-                    </div>
-                    <h2 className="font-bold text-base text-[#111318] dark:text-white truncate">{selectedConcept.title}</h2>
-                    <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-[10px] font-bold text-[#616f89] uppercase tracking-wider">Summary View</span>
-                  </div>
-                  <button
-                    onClick={handleClosePanel}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md transition-colors text-[#616f89]"
-                    title="Close Summary"
+          {activeSection === 'live-learn' && (
+            <div className="flex h-full">
+              {/* Left Panel: Transcription or Detail */}
+              <AnimatePresence mode="wait">
+                {!selectedConcept ? (
+                  <motion.div
+                    key="transcription"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex-[2] h-full"
                   >
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-
-                {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  <div className="p-8 w-full space-y-8">
-
-                    {/* Summary Section (Top ~1/5th) */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
-                      <h3 className="font-bold text-sm text-[#616f89] mb-2 uppercase tracking-wide">Concept Overview</h3>
-                      <p className="text-lg leading-relaxed text-[#111318] dark:text-slate-200">
-                        {selectedConcept.summary}
-                      </p>
+                    <TranscriptionCard />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="concept-detail"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex-[2] flex flex-col h-full bg-black/20"
+                  >
+                    {/* Concept Detail View */}
+                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20 backdrop-blur-xl">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-fuchsia-500/20 rounded-xl text-fuchsia-400 ring-1 ring-fuchsia-500/30">
+                          <span className="material-symbols-outlined text-2xl">lightbulb</span>
+                        </div>
+                        <h3 className="text-2xl font-bold text-white tracking-tight">{selectedConcept.title}</h3>
+                      </div>
+                      <button onClick={handleClosePanel} className="p-2.5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95">
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
                     </div>
 
-                    {/* Mock Iframe (Approx 40-50% height) */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200">Interactive Simulation</h3>
+                    <div className="p-10 overflow-y-auto custom-scrollbar space-y-10">
+                      <div className="glass-panel p-8 rounded-3xl border-white/10">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">AI Summary</h4>
+                        <p className="text-xl leading-relaxed text-gray-100 font-light">{selectedConcept.summary}</p>
                       </div>
-                      <div className="w-full aspect-video bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden group hover:border-primary/50 transition-colors cursor-pointer">
-                        <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900"></div>
-                        <div className="text-center relative z-10 p-6">
-                          <span className="material-symbols-outlined text-6xl text-[#616f89]/30 group-hover:text-primary transition-colors mb-4">science</span>
-                          <p className="font-medium text-[#616f89] group-hover:text-primary transition-colors">Interactive {selectedConcept.title} Model</p>
-                          <button className="mt-4 px-4 py-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm text-sm font-bold border border-gray-200 dark:border-slate-700 group-hover:border-primary group-hover:text-primary transition-all">Click to Load Simulation</button>
+
+                      <div className="w-full aspect-video rounded-3xl overflow-hidden border border-white/10 relative group cursor-pointer shadow-2xl">
+                        <div className="absolute inset-0 bg-gradient-to-br from-violet-900/40 to-fuchsia-900/40 opacity-50 group-hover:opacity-70 transition-opacity" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="material-symbols-outlined text-6xl text-white/50 group-hover:text-white drop-shadow-xl transition-all transform group-hover:scale-110 duration-300">play_circle</span>
+                          <span className="mt-6 text-sm font-bold text-white/80 uppercase tracking-widest bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">Interactive Simulation</span>
                         </div>
                       </div>
                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                    {/* YouTube Videos (Side by side) */}
-                    <div className="space-y-3">
-                      <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200">Related Lectures</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="aspect-video bg-black rounded-lg overflow-hidden shadow-sm">
-                            <iframe
-                              width="100%"
-                              height="100%"
-                              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                              title="YouTube video player"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="w-full h-full"
-                            ></iframe>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="h-4"></div> {/* Bottom Spacer */}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Right Sidebar: Key Concepts */}
-            <div className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-950/50 min-w-[300px]">
-              <div className="p-6 h-full flex flex-col gap-4">
-                <div className="flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">lightbulb</span>
-                    <h2 className="font-bold">Key Concepts</h2>
-                  </div>
-                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">AI Detected</span>
+              {/* Right Panel: Concepts List */}
+              <div className="w-[400px] border-l border-white/5 bg-black/20 flex flex-col backdrop-blur-xl">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                  <h3 className="font-bold text-xs uppercase tracking-widest text-gray-400">Key Concepts</h3>
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-violet-500/20 text-violet-300 rounded-md border border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.2)]">AI ACTIVE</span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  <div className="flex flex-col gap-2">
-                    {keyConceptsData.map((concept) => (
-                      <div
-                        key={concept.id}
-                        onClick={() => handleConceptClick(concept.id)}
-                        className={`p-3 rounded-lg border shadow-sm cursor-pointer transition-all hover:shadow-md ${selectedConcept?.id === concept.id
-                          ? 'bg-primary text-white border-primary shadow-primary/20 ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900'
-                          : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 hover:border-primary/50'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`font-semibold text-sm ${selectedConcept?.id === concept.id ? 'text-white' : ''}`}>{concept.title}</span>
-                          {concept.id === 'wave-particle' && (
-                            <span className={`material-symbols-outlined text-xs ${selectedConcept?.id === concept.id ? 'text-white/80' : 'text-primary'}`}>auto_awesome</span>
-                          )}
-                        </div>
-                        <p className={`text-xs line-clamp-2 ${selectedConcept?.id === concept.id ? 'text-white/80' : 'text-[#616f89] dark:text-slate-400'}`}>
-                          {concept.summary}
-                        </p>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+                  {keyConceptsData.map((concept) => (
+                    <motion.div
+                      layoutId={concept.id}
+                      key={concept.id}
+                      onClick={() => handleConceptClick(concept.id)}
+                      className={`p-5 rounded-2xl border cursor-pointer transition-all group ${selectedConcept?.id === concept.id
+                        ? 'bg-violet-600/20 border-violet-500/50 shadow-[0_0_20px_rgba(124,58,237,0.25)]'
+                        : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className={`font-semibold text-base ${selectedConcept?.id === concept.id ? 'text-violet-200' : 'text-gray-200 group-hover:text-white'}`}>{concept.title}</h4>
+                        {selectedConcept?.id === concept.id && <span className="material-symbols-outlined text-sm text-violet-400">arrow_forward</span>}
                       </div>
-                    ))}
-
-                  </div>
+                      <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed group-hover:text-gray-300 transition-colors">{concept.summary}</p>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             </div>
-          </>
-        )}
+          )}
+
+        </div>
       </main>
-    </>
+    </div>
   );
+}
+
+function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: string, label: string, onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 group ${active
+        ? 'bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-white/10 text-white shadow-lg shadow-violet-500/5'
+        : 'hover:bg-white/5 text-gray-400 hover:text-white'
+        }`}
+    >
+      <span className={`material-symbols-outlined text-xl transition-colors ${active ? 'text-violet-400' : 'group-hover:text-gray-200'}`}>{icon}</span>
+      <span className="font-medium text-sm hidden md:block tracking-wide">{label}</span>
+      {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)] hidden md:block" />}
+    </button>
+  )
+}
+
+function LectureCard({ lecture }: { lecture: any }) {
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
+    >
+      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider
+                ${lecture.status === 'Live' ? 'bg-red-500/20 text-red-400' :
+          lecture.status === 'Upcoming' ? 'bg-blue-500/20 text-blue-400' :
+            'bg-gray-500/20 text-gray-400'}`}
+      >
+        {lecture.status}
+      </div>
+
+      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">{lecture.title}</h3>
+      <p className="text-sm text-gray-400 mb-6">{lecture.instructor}</p>
+
+      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-sm">calendar_today</span>
+          {lecture.date}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-sm">schedule</span>
+          {lecture.duration}
+        </div>
+      </div>
+    </motion.div>
+  )
 }
