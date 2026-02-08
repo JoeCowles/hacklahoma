@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     vector_db_url: str | None = None
     mongo_connection_string: str | None = None
     credit_start_balance: int = 50
+    mongo_connection_string: str | None = None
+    transcript_embeddings_key: str | None = None
 
 
 settings = Settings()

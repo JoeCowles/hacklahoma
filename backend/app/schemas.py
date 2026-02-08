@@ -90,6 +90,47 @@ class ShareResponse(BaseModel):
     status: str
 
 
+class CreateLectureRequest(BaseModel):
+    class_id: str
+    date: str
+    student_id: str
+
+
+class Lecture(BaseModel):
+    id: str
+    class_id: str
+    date: str
+    student_id: str
+    # These fields are populated by the backend from the Class
+    class_name: str | None = None
+    professor: str | None = None
+    school: str | None = None
+    class_time: str | None = None
+
+
+class LectureListResponse(BaseModel):
+    lectures: list[Lecture]
+
+
+class CreateClassRequest(BaseModel):
+    name: str
+    professor: str
+    school: str
+    class_time: str
+
+
+class Class(BaseModel):
+    id: str
+    name: str
+    professor: str
+    school: str
+    class_time: str
+
+
+class ClassListResponse(BaseModel):
+    classes: list[Class]
+
+
 class AuthRegisterRequest(BaseModel):
     email: str
     password: str

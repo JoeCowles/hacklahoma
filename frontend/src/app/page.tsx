@@ -5,21 +5,30 @@ import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LectureForm } from '../components/LectureForm';
+import { ClassForm } from '../components/ClassForm';
 
 interface Lecture {
   id: string;
-  professor: string;
-  school: string;
-  class_name: string;
-  class_time: string;
+  class_id: string;
+  date: string;
   student_id: string;
+  class_name?: string;
+  professor?: string;
+  school?: string;
+  class_time?: string;
 }
 
-
+interface Class {
+  id: string;
+  name: string;
+  professor: string;
+  school: string;
+  class_time: string;
+}
 
 import { KeyConcepts, Concept } from '../components/KeyConcepts';
 
-
+const lecturesData = [];
 
 export default function LectureAssistantDashboard() {
   const { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations } = useRealtimeTranscription();
@@ -35,9 +44,12 @@ export default function LectureAssistantDashboard() {
   }));
 
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
-  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures'>('live-learn');
+  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('live-learn');
   const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
+  const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
+  const [isClassFormOpen, setIsClassFormOpen] = useState(false);
 
   const fetchLectures = async () => {
     try {
@@ -52,9 +64,24 @@ export default function LectureAssistantDashboard() {
     }
   };
 
+  const fetchClasses = async () => {
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/classes`);
+      if (res.ok) {
+        const data = await res.json();
+        setClasses(data.classes);
+      }
+    } catch (error) {
+      console.error("Failed to fetch classes:", error);
+    }
+  };
+
   useEffect(() => {
     if (activeSection === 'lectures') {
       fetchLectures();
+    } else if (activeSection === 'classes') {
+      fetchClasses();
     }
   }, [activeSection]);
 
@@ -73,7 +100,7 @@ export default function LectureAssistantDashboard() {
     setSelectedConcept(null);
   };
 
-  const handleNavigation = (section: 'live-learn' | 'lectures') => {
+  const handleNavigation = (section: 'live-learn' | 'lectures' | 'classes') => {
     setActiveSection(section);
   };
 
@@ -129,6 +156,12 @@ export default function LectureAssistantDashboard() {
             onClick={() => handleNavigation('live-learn')}
           />
           <SidebarItem
+            active={activeSection === 'classes'}
+            icon="school"
+            label="Classes"
+            onClick={() => handleNavigation('classes')}
+          />
+          <SidebarItem
             active={activeSection === 'lectures'}
             icon="class"
             label="Lectures"
@@ -164,7 +197,16 @@ export default function LectureAssistantDashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-5"
               >
-                <h2 className="text-2xl font-bold text-white tracking-tight">Quantum Physics 101</h2>
+                <button
+                  onClick={() => setActiveSection('lectures')}
+                  className="group flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all"
+                >
+                  <h2 className="text-2xl font-bold text-white tracking-tight group-hover:text-violet-300 transition-colors">
+                    {currentLecture ? `${currentLecture.class_name}` : "Select a Lecture"}
+                  </h2>
+                  <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">expand_more</span>
+                </button>
+
                 <div className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-2.5 shadow-sm shadow-red-500/5">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -177,6 +219,11 @@ export default function LectureAssistantDashboard() {
             {activeSection === 'lectures' && (
               <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
                 My Lectures
+              </motion.h2>
+            )}
+            {activeSection === 'classes' && (
+              <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
+                My Classes
               </motion.h2>
             )}
           </div>
@@ -201,7 +248,37 @@ export default function LectureAssistantDashboard() {
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setIsFormOpen(true)}
+                  onClick={() => setIsLectureFormOpen(true)}
+                  className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer group min-h-[220px]"
+                >
+                  <div className="size-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors ring-1 ring-white/10 group-hover:ring-violet-500/30">
+                    <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-violet-400 transition-colors">add</span>
+                  </div>
+                  <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Lecture</p>
+                </motion.div>
+
+                {lectures.map((lecture) => (
+                  <LectureCard
+                    key={lecture.id}
+                    lecture={lecture}
+                    onClick={() => {
+                      setCurrentLecture(lecture);
+                      setActiveSection('live-learn');
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'classes' && (
+            <div className="p-10 overflow-y-auto custom-scrollbar h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {/* Create New Class Card */}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsClassFormOpen(true)}
                   className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer group min-h-[220px]"
                 >
                   <div className="size-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors ring-1 ring-white/10 group-hover:ring-violet-500/30">
@@ -210,21 +287,33 @@ export default function LectureAssistantDashboard() {
                   <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Class</p>
                 </motion.div>
 
-                {lectures.map((lecture) => (
-                  <LectureCard key={lecture.id} lecture={lecture} />
+                {classes.map((cls) => (
+                  <ClassCard key={cls.id} cls={cls} />
                 ))}
               </div>
             </div>
           )}
 
           <AnimatePresence>
-            {isFormOpen && (
+            {isLectureFormOpen && (
               <LectureForm
                 onSuccess={() => {
-                  setIsFormOpen(false);
+                  setIsLectureFormOpen(false);
                   fetchLectures();
                 }}
-                onCancel={() => setIsFormOpen(false)}
+                onCancel={() => setIsLectureFormOpen(false)}
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isClassFormOpen && (
+              <ClassForm
+                onSuccess={() => {
+                  setIsClassFormOpen(false);
+                  fetchClasses();
+                }}
+                onCancel={() => setIsClassFormOpen(false)}
               />
             )}
           </AnimatePresence>
@@ -377,10 +466,11 @@ function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: 
   )
 }
 
-function LectureCard({ lecture }: { lecture: Lecture }) {
+function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => void }) {
   return (
     <motion.div
       whileHover={{ y: -5 }}
+      onClick={onClick}
       className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
     >
       <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400`}>
@@ -392,12 +482,39 @@ function LectureCard({ lecture }: { lecture: Lecture }) {
 
       <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
         <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">school</span>
-          {lecture.school}
+          <span className="material-symbols-outlined text-sm">calendar_today</span>
+          {lecture.date}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">schedule</span>
           {lecture.class_time}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function ClassCard({ cls }: { cls: Class }) {
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
+    >
+      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-fuchsia-500/20 text-fuchsia-400`}>
+        Enrolled
+      </div>
+
+      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">{cls.name}</h3>
+      <p className="text-sm text-gray-400 mb-6">{cls.professor}</p>
+
+      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-sm">school</span>
+          {cls.school}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-sm">schedule</span>
+          {cls.class_time}
         </div>
       </div>
     </motion.div>

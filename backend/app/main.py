@@ -36,6 +36,9 @@ from .schemas import (
     CreateLectureRequest,
     Lecture,
     LectureListResponse,
+    CreateClassRequest,
+    Class,
+    ClassListResponse,
 )
 from pymongo import MongoClient
 from pathlib import Path
@@ -394,19 +397,31 @@ def create_lecture(payload: CreateLectureRequest) -> Lecture:
     
     new_lecture = {
         "id": lecture_id,
-        "professor": payload.professor,
-        "school": payload.school,
-        "class_name": payload.class_name,
-        "class_time": payload.class_time,
+        "class_id": payload.class_id,
+        "date": payload.date,
         "student_id": payload.student_id,
     }
 
     if db is not None:
+        # Validate class exists
+        class_doc = db.classes.find_one({"id": payload.class_id})
+        if not class_doc:
+            raise HTTPException(status_code=404, detail="Class not found")
+        
+        # We can store some denormalized data if we want, but for now let's just store the reference
+        # Actually for simplicity let's stick to normalized and join on read
         db.lectures.insert_one(new_lecture.copy())
+        
+        # Populate response with class details
+        return Lecture(
+            **new_lecture,
+            class_name=class_doc["name"],
+            professor=class_doc["professor"],
+            school=class_doc["school"],
+            class_time=class_doc["class_time"]
+        )
     else:
         raise HTTPException(status_code=503, detail="Database unavailable")
-    
-    return Lecture(**new_lecture)
 
 
 @app.get("/lectures", response_model=LectureListResponse)
@@ -415,7 +430,60 @@ def get_lectures() -> LectureListResponse:
         raise HTTPException(status_code=503, detail="Database unavailable")
     
     # In a real app, filtering by user_id would happen here
+    classes_map = {}
+    if db is not None:
+        classes_cursor = db.classes.find()
+        classes_map = {c["id"]: c for c in classes_cursor}
+
     lectures_cursor = db.lectures.find()
-    # MongoDB returns _id, we need to map it or ignore it since we store "id" explicitly
-    lectures = [Lecture(**l) for l in lectures_cursor]
+    
+    lectures = []
+    for l in lectures_cursor:
+        class_id = l.get("class_id")
+        class_info = classes_map.get(class_id, {})
+        
+        lectures.append(Lecture(
+            id=l["id"],
+            class_id=l.get("class_id", ""),
+            date=l.get("date", ""),
+            student_id=l.get("student_id", ""),
+            class_name=class_info.get("name"),
+            professor=class_info.get("professor"),
+            school=class_info.get("school"),
+            class_time=class_info.get("class_time")
+        ))
+        
     return LectureListResponse(lectures=lectures)
+
+
+@app.post("/classes", response_model=Class)
+def create_class(payload: CreateClassRequest) -> Class:
+    import uuid
+    class_id = f"class_{uuid.uuid4()}"
+    
+    new_class = {
+        "id": class_id,
+        "name": payload.name,
+        "professor": payload.professor,
+        "school": payload.school,
+        "class_time": payload.class_time,
+    }
+
+    if db is not None:
+        db.classes.insert_one(new_class.copy())
+    else:
+        # Fallback for dev without DB
+        print("Warning: DB not available, class not persisted")
+    
+    return Class(**new_class)
+
+
+@app.get("/classes", response_model=ClassListResponse)
+def get_classes() -> ClassListResponse:
+    if db is None:
+         # Return empty list or error? Let's return empty list for cleaner UI if DB down
+         return ClassListResponse(classes=[])
+    
+    classes_cursor = db.classes.find()
+    classes = [Class(**c) for c in classes_cursor]
+    return ClassListResponse(classes=classes)
