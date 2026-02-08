@@ -1,14 +1,12 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import json
-import time
 
 from .config import settings
 from .services.gemini import GeminiClient
 from .services.elevenlabs import ElevenLabsClient
 from .services.youtube import YouTubeClient
 from .services.pipeline import PipelineService
-from .services.simulation import SimulationService
 # from .services.google_search import search_youtube_via_google
 from .schemas import (
     TranscriptChunk,
@@ -53,11 +51,9 @@ USERS: dict[str, dict[str, str]] = {}
 SESSIONS: dict[str, str] = {}
 
 gemini_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_model)
-simulation_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_simulation_model)
 elevenlabs_client = ElevenLabsClient(settings.elevenlabs_api_key or "")
 youtube_client = YouTubeClient()
-simulation_service = SimulationService(simulation_client)
-pipeline_service = PipelineService(gemini_client, youtube_client, simulation_service)
+pipeline_service = PipelineService(gemini_client, youtube_client)
 
 PROMPT_DIR = Path(__file__).parent / "prompts"
 PROMPT_CACHE: dict[str, str] = {}
@@ -108,9 +104,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         if new_concepts_data:
                             new_concepts_objs = [
                                 Concept(
-                                    id=c["id"],
                                     keyword=c["keyword"], 
-                                    definition=c.get("definition"),
                                     stem_concept=c["stem_concept"], 
                                     source_chunk_id=message.get("chunk_id")
                                 ) 
@@ -158,9 +152,7 @@ def extract_concepts(payload: TranscriptChunk) -> ConceptExtractionResponse:
         if not keyword:
             continue
         concept = Concept(
-            id=str((item or {}).get("id", f"concept_{payload.lecture_id}_{int(time.time()*1000)}_{len(new_concepts)}")),
             keyword=str(keyword),
-            definition=str((item or {}).get("definition", "")),
             stem_concept=bool((item or {}).get("stem_concept", False)),
             source_chunk_id=payload.chunk_id,
         )
@@ -191,22 +183,17 @@ def create_walkthrough(lecture_id: str, payload: WalkthroughRequest) -> Walkthro
 
 
 @app.post("/animations/generate", response_model=AnimationResponse)
-async def generate_animation(payload: AnimationRequest) -> AnimationResponse:
+def generate_animation(payload: AnimationRequest) -> AnimationResponse:
     if not settings.gemini_api_key:
         raise HTTPException(status_code=500, detail="Gemini API key is not configured")
 
-    # For on-demand, we might not have full context, but we can pass what we have
-    context = f"Manual request for animation on: {payload.concept}"
-    
+    prompt = load_prompt("animation").replace("{{concept}}", payload.concept)
     try:
-        code = await simulation_service.generate_simulation(
-            concept=payload.concept,
-            description=f"Interactive simulation of {payload.concept}",
-            context=context
-        )
+        data = gemini_client.generate_json(prompt)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Simulation error: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Gemini error: {exc}") from exc
 
+    code = (data or {}).get("code") if isinstance(data, dict) else None
     if not code:
         raise HTTPException(status_code=502, detail="Gemini returned empty code")
     return AnimationResponse(concept=payload.concept, status="ready", asset_url=None, code=code)

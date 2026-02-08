@@ -7,4 +7,11 @@ BACKEND_DIR="$ROOT_DIR/backend"
 
 cd "$BACKEND_DIR"
 
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+if [ ! -d ".venv" ]; then
+  python3 -m venv .venv
+fi
+
+source .venv/bin/activate
+pip install -r requirements.txt
+
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

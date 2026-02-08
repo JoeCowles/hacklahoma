@@ -9,9 +9,7 @@ class TranscriptChunk(BaseModel):
 
 
 class Concept(BaseModel):
-    id: str | None = None
     keyword: str
-    definition: str | None = None
     stem_concept: bool = False
     source_chunk_id: str | None = None
 

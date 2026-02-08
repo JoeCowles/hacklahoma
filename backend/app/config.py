@@ -6,8 +6,7 @@ class Settings(BaseSettings):
 
     environment: str = "dev"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_simulation_model: str = "gemini-3-flash-preview"
+    gemini_model: str = "gemini-2.5-flash-lite"
     google_api_key: str = ""
     google_search_cx: str = ""
     elevenlabs_api_key: str | None = None

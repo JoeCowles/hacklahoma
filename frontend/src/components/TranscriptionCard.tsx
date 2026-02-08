@@ -2,7 +2,7 @@
 
 import { TranscriptionItem } from "../hooks/useRealtimeTranscription";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -21,71 +21,12 @@ interface TranscriptionCardProps {
 export function TranscriptionCard({ isRecording, transcripts, error, startRecording, stopRecording }: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<{ text: string, x: number, y: number } | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [simulationCode, setSimulationCode] = useState<string | null>(null);
-
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcripts]);
 
-  const handleMouseUp = () => {
-    const sel = window.getSelection();
-    if (sel && sel.toString().trim().length > 0) {
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      setSelection({
-        text: sel.toString().trim(),
-        x: rect.left + rect.width / 2,
-        y: rect.top + window.scrollY
-      });
-    } else {
-      if (!isGenerating && !simulationCode) {
-        setSelection(null);
-      }
-    }
-  };
-
-  const handleCreateSimulation = async () => {
-    if (!selection) return;
-    setIsGenerating(true);
-    setSimulationCode(null);
-
-    try {
-      const response = await fetch("http://localhost:8000/animations/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          concept: selection.text,
-          lecture_id: "manual_selection"
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Simulation Generation Failed:", response.status, errorText);
-        throw new Error(`Failed to generate simulation: ${response.status} ${errorText}`);
-      }
-      
-      const data = await response.json();
-      setSimulationCode(data.code);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to generate simulation. Check console for details.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   return (
-<<<<<<< HEAD
     <div className="flex-[3] flex flex-col h-full overflow-hidden glass-panel rounded-2xl relative">
-=======
-    <div 
-      className="flex-[3] flex flex-col border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative animate-in fade-in duration-300 h-full overflow-hidden"
-      onMouseUp={handleMouseUp}
-    >
->>>>>>> cb2d02a (sims)
       <TranscriptionHeader
         isRecording={isRecording}
         onStart={startRecording}
@@ -116,60 +57,6 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
           <RelatedLectures />
         </div>
       </div>
-
-      {/* Floating Simulation Tooltip */}
-      <AnimatePresence>
-        {selection && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            style={{ 
-              position: 'fixed', 
-              left: selection.x, 
-              top: selection.y - 10,
-              transform: 'translateX(-50%) translateY(-100%)',
-              zIndex: 100
-            }}
-            className="bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-gray-200 dark:border-slate-700 p-2 min-w-[200px]"
-          >
-            {!simulationCode && !isGenerating && (
-              <button
-                onClick={handleCreateSimulation}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 rounded-lg text-primary transition-colors text-sm font-bold"
-              >
-                <span className="material-symbols-outlined text-lg">science</span>
-                Simulate Selection
-              </button>
-            )}
-
-            {isGenerating && (
-              <div className="flex items-center gap-3 px-3 py-2 text-sm text-[#616f89]">
-                <div className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                Generating Visuals...
-              </div>
-            )}
-
-            {simulationCode && (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between px-2 pt-1">
-                  <span className="text-[10px] font-bold text-primary uppercase">Selection Visualizer</span>
-                  <button onClick={() => { setSelection(null); setSimulationCode(null); }} className="text-gray-400 hover:text-red-500">
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-                </div>
-                <div className="w-[350px] h-[300px] bg-white rounded-lg overflow-hidden border border-gray-100">
-                  <iframe 
-                    srcDoc={simulationCode} 
-                    className="w-full h-full border-none" 
-                    sandbox="allow-scripts"
-                  />
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

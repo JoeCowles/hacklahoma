@@ -1,100 +1,81 @@
 import json
 import re
 from typing import Any
-from google import genai
-from google.genai import types
+
+import httpx
 
 
 class GeminiClient:
     def __init__(self, api_key: str, model: str) -> None:
         self.api_key = api_key
         self.model = model
-        self.client = genai.Client(
-            api_key=self.api_key, 
-            http_options={'api_version': 'v1beta'}
-        )
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
 
     def generate_json(self, prompt: str) -> Any:
-        try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    safety_settings=[
-                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+        url = f"{self.base_url}/models/{self.model}:generateContent"
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt,
+                        }
                     ]
-                )
-            )
-            return _parse_json_from_text(response.text)
-        except Exception as e:
-            print(f"Gemini JSON Error: {e}")
-            return None
+                }
+            ],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+            },
+        }
+        headers = {
+            "x-goog-api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+        text = (
+            data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        return _parse_json_from_text(text)
 
     async def generate_json_async(self, prompt: str) -> Any:
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    safety_settings=[
-                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+        url = f"{self.base_url}/models/{self.model}:generateContent"
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt,
+                        }
                     ]
-                )
-            )
-            return _parse_json_from_text(response.text)
-        except Exception as e:
-            print(f"Gemini Async JSON Error: {e}")
-            return None
+                }
+            ],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+            },
+        }
+        headers = {
+            "x-goog-api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
 
-    def generate_text(self, prompt: str) -> str:
-        try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    safety_settings=[
-                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
-                    ]
-                )
-            )
-            if not response.text:
-                print(f"DEBUG: Gemini returned no text. Candidates: {response.candidates}")
-            return response.text or ""
-        except Exception as e:
-            print(f"Gemini Text Error: {e}")
-            return f"Error: {str(e)}"
-
-    async def generate_text_async(self, prompt: str) -> str:
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    safety_settings=[
-                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
-                    ]
-                )
-            )
-            if not response.text:
-                print(f"DEBUG: Gemini Async returned no text. Candidates: {response.candidates}")
-            return response.text or ""
-        except Exception as e:
-            print(f"Gemini Async Text Error: {e}")
-            return f"Error: {str(e)}"
+        text = (
+            data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        return _parse_json_from_text(text)
 
 
 def _parse_json_from_text(text: str) -> Any:
@@ -110,17 +91,10 @@ def _parse_json_from_text(text: str) -> Any:
     # Try to extract JSON from a fenced block or first JSON object/array.
     fenced = re.search(r"```json\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
     if fenced:
-        try:
-            return json.loads(fenced.group(1).strip())
-        except json.JSONDecodeError:
-            pass
+        return json.loads(fenced.group(1).strip())
 
     blob = re.search(r"(\{.*\}|\[.*\])", text, re.DOTALL)
     if blob:
-        try:
-            return json.loads(blob.group(1))
-        except json.JSONDecodeError:
-            pass
+        return json.loads(blob.group(1))
 
-    print(f"DEBUG: Failed to parse JSON from: {text[:200]}...")
-    return None
+    raise ValueError("Gemini response did not include valid JSON")

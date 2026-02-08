@@ -96,18 +96,8 @@ export default function LectureAssistantDashboard() {
   };
 
   // Filter videos and simulations for selected concept
-  const relatedVideos = selectedConcept 
-    ? videos.filter(v => 
-        v.context_concept_id === selectedConcept.id || 
-        v.context_concept?.toLowerCase() === selectedConcept.title.toLowerCase()
-      ) 
-    : [];
-  
-  // Try ID match first, then keyword fallback
-  const relatedSimulation = selectedConcept 
-    ? (simulations.find(s => s.concept_id === selectedConcept.id) || 
-       simulations.find(s => s.concept.toLowerCase() === selectedConcept.title.toLowerCase()))
-    : null;
+  const relatedVideos = selectedConcept ? videos.filter(v => v.context_concept_id === selectedConcept.id) : [];
+  const relatedSimulation = selectedConcept ? simulations.find(s => s.concept_id === selectedConcept.id) : null;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-fuchsia-500/30 h-full">
@@ -273,7 +263,6 @@ export default function LectureAssistantDashboard() {
                       </button>
                     </div>
 
-<<<<<<< HEAD
                     <div className="p-10 overflow-y-auto custom-scrollbar space-y-10">
                       <div className="glass-panel p-8 rounded-3xl border-white/10">
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">AI Summary</h4>
@@ -286,68 +275,6 @@ export default function LectureAssistantDashboard() {
                           <span className="material-symbols-outlined text-6xl text-white/50 group-hover:text-white drop-shadow-xl transition-all transform group-hover:scale-110 duration-300">play_circle</span>
                           <span className="mt-6 text-sm font-bold text-white/80 uppercase tracking-widest bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">Interactive Simulation</span>
                         </div>
-=======
-                    {/* Related Material Section */}
-                    <div className="space-y-4">
-                      <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200 uppercase tracking-wide">Related Material</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        {/* Interactive Simulation Card */}
-                        {relatedSimulation && (
-                          <div className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">science</span>
-                                Interactive Simulation
-                              </span>
-                            </div>
-                            <div className="w-full aspect-video bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm hover:border-primary/50 transition-colors">
-                              {relatedSimulation.code ? (
-                                <iframe
-                                  srcDoc={relatedSimulation.code}
-                                  className="w-full h-full border-none"
-                                  title={`Simulation: ${selectedConcept.title}`}
-                                  sandbox="allow-scripts"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                                  <span className="material-symbols-outlined text-4xl text-gray-300 animate-pulse mb-2">science</span>
-                                  <p className="text-sm text-[#616f89]">Generating simulation...</p>
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-xs text-[#616f89] dark:text-slate-400 italic px-1">
-                              {relatedSimulation.description}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* YouTube Videos */}
-                        {relatedVideos.map((video, i) => (
-                          <div key={i} className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded uppercase flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">play_circle</span>
-                                Video Reference
-                              </span>
-                            </div>
-                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-slate-800">
-                              <iframe
-                                width="100%"
-                                height="100%"
-                                src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}`}
-                                title={video.title}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                              ></iframe>
-                            </div>
-                            <p className="text-xs font-bold text-[#111318] dark:text-slate-200 px-1 line-clamp-1">
-                              {video.title}
-                            </p>
-                          </div>
-                        ))}
->>>>>>> cb2d02a (sims)
                       </div>
                     </div>
                   </motion.div>
