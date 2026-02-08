@@ -47,6 +47,7 @@ from .schemas import (
     Flashcard,
     Question,
     Quiz,
+    ReferenceText,
 )
 from .services.auth import (
     create_access_token,
