@@ -15,6 +15,10 @@ interface UseRealtimeTranscriptionReturn {
     concepts: any[];
     videos: any[];
     simulations: any[];
+    setConcepts: React.Dispatch<React.SetStateAction<any[]>>;
+    setVideos: React.Dispatch<React.SetStateAction<any[]>>;
+    setSimulations: React.Dispatch<React.SetStateAction<any[]>>;
+    setTranscripts: React.Dispatch<React.SetStateAction<TranscriptionItem[]>>;
 }
 
 const ELEVENLABS_REALTIME_URL = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
@@ -67,11 +71,11 @@ async function fetchRealtimeToken(): Promise<string> {
     return body.token;
 }
 
-export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
+export function useRealtimeTranscription(lectureId: string | null): UseRealtimeTranscriptionReturn {
     const [isRecording, setIsRecording] = useState(false);
     const [transcripts, setTranscripts] = useState<TranscriptionItem[]>([]);
     const [error, setError] = useState<string | null>(null);
-    
+
     // Pipeline states
     const [concepts, setConcepts] = useState<any[]>([]);
     const [videos, setVideos] = useState<any[]>([]);
@@ -113,7 +117,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                 socket.close();
             }
         }
-        
+
         setIsRecording(false);
     }, []);
 
@@ -124,11 +128,11 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
 
             const backendSocket = new WebSocket("ws://127.0.0.1:8000/ws/user_1");
             backendSocketRef.current = backendSocket;
-            
+
             backendSocket.onopen = () => {
                 console.log("✅ Connected to Backend WebSocket at 127.0.0.1:8000");
             };
-            
+
             backendSocket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
@@ -139,8 +143,8 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                             setConcepts(prev => {
                                 const existingKeywords = new Set(prev.map(c => c.keyword.toLowerCase()));
                                 const existingIds = new Set(prev.map(c => c.id));
-                                
-                                const newConcepts = results.concepts.filter((c: any) => 
+
+                                const newConcepts = results.concepts.filter((c: any) =>
                                     !existingKeywords.has(c.keyword.toLowerCase()) && !existingIds.has(c.id)
                                 );
                                 return [...prev, ...newConcepts];
@@ -205,7 +209,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                         previous_context: prev.length > 1 ? prev[prev.length - 2].text : ""
                     }));
                 }
-                
+
                 return [...prev.slice(0, -1), { ...last, type: "committed" }];
             }
             return prev;
@@ -293,14 +297,15 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                         const transcriptText = data.text;
 
                         // Generate IDs for concept extraction
-                        const lectureId = "lecture_" + new Date().toISOString().split('T')[0]; // Simple daily ID for now
+                        // Use passed lectureId or fallback to daily ID if null
+                        const finalLectureId = lectureId || "lecture_" + new Date().toISOString().split('T')[0];
                         const chunkId = "chunk_" + Date.now();
 
                         // Send to Backend WebSocket
                         if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
-                             backendSocketRef.current.send(JSON.stringify({
+                            backendSocketRef.current.send(JSON.stringify({
                                 type: "transcript_commit",
-                                lecture_id: lectureId,
+                                lecture_id: finalLectureId,
                                 chunk_id: chunkId,
                                 text: transcriptText,
                                 previous_context: transcripts.length > 0 ? transcripts[transcripts.length - 1].text : ""
@@ -357,7 +362,20 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
             setError(message);
             cleanup();
         }
-    }, [cleanup, isRecording, transcripts]); // Added transcripts to dependency array for context
+    }, [cleanup, isRecording, transcripts, lectureId]); // Added transcripts and lectureId to dependency array for context
 
-    return { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations };
+    return {
+        isRecording,
+        transcripts,
+        error,
+        startRecording,
+        stopRecording,
+        concepts,
+        videos,
+        simulations,
+        setConcepts,
+        setVideos,
+        setSimulations,
+        setTranscripts
+    };
 }

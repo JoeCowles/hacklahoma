@@ -164,20 +164,16 @@ class OnboardingResponse(BaseModel):
     status: str
 
 
-class CreateLectureRequest(BaseModel):
-    title: str
-    instructor: str | None = None
-    subject: str | None = None
 
+class TranscriptItem(BaseModel):
+    time: str
+    text: str
+    type: str # 'partial' | 'committed'
 
-class Lecture(BaseModel):
-    id: str
-    title: str
-    instructor: str | None = None
-    date: str | None = None
-    status: str | None = None
-    duration: str | None = None
+class LectureDetailsResponse(BaseModel):
+    lecture: Lecture
+    concepts: list[Concept]
+    videos: list[VideoResult]
+    simulations: list[AnimationResponse]
+    transcripts: list[TranscriptItem]
 
-
-class LectureListResponse(BaseModel):
-    lectures: list[Lecture]

@@ -31,7 +31,32 @@ import { KeyConcepts, Concept } from '../components/KeyConcepts';
 const lecturesData = [];
 
 export default function LectureAssistantDashboard() {
-  const { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations } = useRealtimeTranscription();
+
+
+
+
+  const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
+  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('classes');
+  const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
+  const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
+  const [isClassFormOpen, setIsClassFormOpen] = useState(false);
+
+  const {
+    isRecording,
+    transcripts,
+    error,
+    startRecording,
+    stopRecording,
+    concepts,
+    videos,
+    simulations,
+    setConcepts,
+    setVideos,
+    setSimulations,
+    setTranscripts
+  } = useRealtimeTranscription(currentLecture?.id || null);
 
   // Map backend concepts to UI format
   // The hook returns concepts as any[], we cast/map them to our Concept interface
@@ -42,14 +67,6 @@ export default function LectureAssistantDashboard() {
     stem_concept: c.stem_concept,
     source_chunk_id: c.source_chunk_id
   }));
-
-  const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
-  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('live-learn');
-  const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
-  const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
-  const [isClassFormOpen, setIsClassFormOpen] = useState(false);
 
   const fetchLectures = async () => {
     try {
@@ -74,6 +91,28 @@ export default function LectureAssistantDashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch classes:", error);
+    }
+  };
+
+  const loadLectureDetails = async (lectureId: string) => {
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/lectures/${lectureId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentLecture(data.lecture);
+        setConcepts(data.concepts);
+        setVideos(data.videos);
+        setSimulations(data.simulations);
+        if (data.transcripts) {
+          setTranscripts(data.transcripts);
+        } else {
+          setTranscripts([]);
+        }
+        setActiveSection('live-learn');
+      }
+    } catch (error) {
+      console.error("Failed to fetch lecture details:", error);
     }
   };
 
@@ -261,10 +300,7 @@ export default function LectureAssistantDashboard() {
                   <LectureCard
                     key={lecture.id}
                     lecture={lecture}
-                    onClick={() => {
-                      setCurrentLecture(lecture);
-                      setActiveSection('live-learn');
-                    }}
+                    onClick={() => loadLectureDetails(lecture.id)}
                   />
                 ))}
               </div>

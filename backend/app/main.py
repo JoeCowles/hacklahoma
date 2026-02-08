@@ -39,6 +39,12 @@ from .schemas import (
     CreateClassRequest,
     Class,
     ClassListResponse,
+    CreateClassRequest,
+    Class,
+    ClassListResponse,
+    ClassListResponse,
+    LectureDetailsResponse,
+    TranscriptItem,
 )
 from pymongo import MongoClient
 from pathlib import Path
@@ -138,6 +144,22 @@ async def run_simulation_background(websocket: WebSocket, simulation_service: Si
                 }
             })
             print(f"DEBUG: Background simulation for {sim_request['concept']} completed and sent.")
+
+            # Persist simulation
+            if db is not None:
+                sim_doc = {
+                    "lecture_id": lecture_id,
+                    "concept": sim_request["concept"],
+                    "description": sim_request.get("description"),
+                    "code": code,
+                    "status": "ready",
+                    "timestamp": time.time()
+                }
+                db.simulations.insert_one(sim_doc)
+            else:
+                 # Minimal in-memory fallback for simulations if we want, or just skip
+                 pass
+
         except Exception as e:
             print(f"Could not send background simulation result (client likely disconnected): {e}")
     except Exception as e:
@@ -190,6 +212,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 ))
                         
                         # Also update local store if needed (e.g., CONCEPTS)
+                        # Persist transcripts
+                        if db is not None:
+                            transcript_doc = {
+                                "lecture_id": lecture_id,
+                                "chunk_id": message.get("chunk_id"), # Use message.get("chunk_id")
+                                "text": text, # Use the 'text' variable already defined
+                                "time": time.strftime("%H:%M:%S"), # Approximate server time, ideally client sends it
+                                "type": "committed",
+                                "timestamp": time.time()
+                            }
+                            db.transcripts.insert_one(transcript_doc)
+
                         new_concepts_data = result.get("concepts", [])
                         if new_concepts_data:
                             new_concepts_objs = [
@@ -203,6 +237,42 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 for c in new_concepts_data
                             ]
                             CONCEPTS.setdefault(lecture_id, []).extend(new_concepts_objs)
+                        
+                            # Persist concepts
+                            if db is not None:
+                                concept_docs = []
+                                for c in new_concepts_data:
+                                    c_doc = c.copy()
+                                    c_doc["lecture_id"] = lecture_id
+                                    c_doc["timestamp"] = time.time()
+                                    concept_docs.append(c_doc)
+                                if concept_docs:
+                                    db.concepts.insert_many(concept_docs)
+                        
+                        # Persist video results
+                        new_videos = result.get("videos", [])
+                        if new_videos and db is not None:
+                            video_docs = []
+                            for v in new_videos:
+                                v_doc = v.copy()
+                                v_doc["lecture_id"] = lecture_id
+                                v_doc["timestamp"] = time.time()
+                                video_docs.append(v_doc)
+                            if video_docs:
+                                db.videos.insert_many(video_docs)
+
+                        # Persist simulation requests (pending state)
+                        new_sims = result.get("simulations", [])
+                        if new_sims and db is not None:
+                            sim_docs = []
+                            for s in new_sims:
+                                s_doc = s.copy()
+                                s_doc["lecture_id"] = lecture_id
+                                s_doc["status"] = "pending" # Initial state
+                                s_doc["timestamp"] = time.time()
+                                sim_docs.append(s_doc)
+                            if sim_docs:
+                                db.simulations.insert_many(sim_docs)
 
             except json.JSONDecodeError:
                 pass
@@ -454,6 +524,56 @@ def get_lectures() -> LectureListResponse:
         ))
         
     return LectureListResponse(lectures=lectures)
+
+
+@app.get("/lectures/{lecture_id}", response_model=LectureDetailsResponse)
+def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    # 1. Get Lecture
+    lecture_doc = db.lectures.find_one({"id": lecture_id})
+    if not lecture_doc:
+        raise HTTPException(status_code=404, detail="Lecture not found")
+    
+    # Enrich with class info
+    class_id = lecture_doc.get("class_id")
+    class_doc = db.classes.find_one({"id": class_id}) if class_id else None
+    
+    lecture = Lecture(
+        id=lecture_doc["id"],
+        class_id=lecture_doc.get("class_id", ""),
+        date=lecture_doc.get("date", ""),
+        student_id=lecture_doc.get("student_id", ""),
+        class_name=class_doc.get("name") if class_doc else None,
+        professor=class_doc.get("professor") if class_doc else None,
+        school=class_doc.get("school") if class_doc else None,
+        class_time=class_doc.get("class_time") if class_doc else None
+    )
+
+    # 2. Get Concepts
+    concepts_cursor = db.concepts.find({"lecture_id": lecture_id})
+    concepts = [Concept(**c) for c in concepts_cursor]
+    
+    # 3. Get Videos
+    videos_cursor = db.videos.find({"lecture_id": lecture_id})
+    videos = [VideoResult(**v) for v in videos_cursor]
+
+    # 4. Get Simulations
+    sims_cursor = db.simulations.find({"lecture_id": lecture_id, "status": "ready"})
+    simulations = [AnimationResponse(**s) for s in sims_cursor]
+
+    # 5. Get Transcripts
+    transcripts_cursor = db.transcripts.find({"lecture_id": lecture_id}).sort("timestamp", 1)
+    transcripts = [TranscriptItem(**t) for t in transcripts_cursor]
+
+    return LectureDetailsResponse(
+        lecture=lecture,
+        concepts=concepts,
+        videos=videos,
+        simulations=simulations,
+        transcripts=transcripts
+    )
 
 
 @app.post("/classes", response_model=Class)
