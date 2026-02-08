@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -31,6 +31,7 @@ from .schemas import (
     Lecture,
     LectureDetailsResponse,
     LectureListResponse,
+    LectureSearchResponse,
     OnboardingRequest,
     OnboardingResponse,
     ShareRequest,
@@ -91,6 +92,20 @@ if settings.mongo_connection_string:
         )
     except Exception as e:
         print(f"Failed to initialize default user: {e}")
+
+    # Ensure text indexes exist for search functionality
+    try:
+        if "text_text" not in db.transcripts.index_information():
+            db.transcripts.create_index([("text", "text")], name="text_text")
+            print("Created text index on 'transcripts.text'")
+        if "keyword_text_definition_text" not in db.concepts.index_information():
+            db.concepts.create_index([("keyword", "text"), ("definition", "text")], name="keyword_text_definition_text")
+            print("Created text index on 'concepts.keyword' and 'concepts.definition'")
+        if "name_text_professor_text" not in db.classes.index_information():
+            db.classes.create_index([("name", "text"), ("professor", "text")], name="name_text_professor_text")
+            print("Created text index on 'classes.name' and 'classes.professor'")
+    except Exception as e:
+        print(f"Failed to create text indexes: {e}")
 else:
     print("WARNING: MongoDB connection string not found. Database features will fail.")
     mongo_client = None
@@ -858,6 +873,55 @@ def get_lectures() -> LectureListResponse:
         ))
         
     return LectureListResponse(lectures=lectures)
+
+
+@app.get("/lectures/search", response_model=LectureSearchResponse)
+def search_lectures(query: str = Query("", min_length=1)) -> LectureSearchResponse:
+    """
+    Search lectures by simple word matching in:
+    - Title (class name)
+    - First transcript chunk (lecture transcription)
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    words = [w.strip() for w in query.split() if w.strip()]
+    if not words:
+        return LectureSearchResponse(results=[])
+
+    found_lecture_ids: set[str] = set()
+
+    # 1. Title: match words in class name (classes.name)
+    and_name_regex = [{"name": {"$regex": w, "$options": "i"}} for w in words]
+    class_matches = db.classes.find({"$and": and_name_regex}, {"id": 1})
+    for class_match in class_matches:
+        class_id = class_match["id"]
+        for l in db.lectures.find({"class_id": class_id}, {"id": 1}):
+            found_lecture_ids.add(l["id"])
+
+    # 2. First transcript chunk: get first transcript per lecture, then word-match on its text
+    and_text_regex = [{"first_text": {"$regex": w, "$options": "i"}} for w in words]
+    pipeline = [
+        {"$sort": {"lecture_id": 1, "timestamp": 1}},
+        {"$group": {"_id": "$lecture_id", "first_text": {"$first": "$text"}}},
+        {"$match": {"$and": and_text_regex}},
+    ]
+    for doc in db.transcripts.aggregate(pipeline):
+        found_lecture_ids.add(doc["_id"])
+
+    if not found_lecture_ids:
+        return LectureSearchResponse(results=[])
+
+    results_list: list[LectureDetailsResponse] = []
+    for lecture_id in found_lecture_ids:
+        try:
+            lecture_details = get_lecture_details(lecture_id)
+            results_list.append(lecture_details)
+        except HTTPException as e:
+            print(f"Warning: Could not retrieve details for lecture_id {lecture_id}: {e.detail}")
+            continue
+
+    return LectureSearchResponse(results=results_list)
 
 
 @app.get("/lectures/{lecture_id}", response_model=LectureDetailsResponse)

@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LectureForm } from '../components/LectureForm';
 import { ClassForm } from '../components/ClassForm';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import type { LectureDetailsResponse, LectureSearchResponse } from '../types/lecture';
 
 interface Lecture {
   id: string;
   class_id: string;
   date: string;
   student_id: string;
-  class_name?: string;
-  professor?: string;
-  school?: string;
-  class_time?: string;
+  class_name?: string | null;
+  professor?: string | null;
+  school?: string | null;
+  class_time?: string | null;
 }
 
 interface Class {
@@ -38,9 +39,10 @@ import { KeyConcepts, Concept, Flashcard, Quiz } from '../components/KeyConcepts
 
 export default function LectureAssistantDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
-  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('classes');
+  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes' | 'explore'>('classes');
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
 
@@ -48,6 +50,11 @@ export default function LectureAssistantDashboard() {
   const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
   const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
   const [isClassFormOpen, setIsClassFormOpen] = useState(false);
+
+  const [exploreQuery, setExploreQuery] = useState('');
+  const [exploreResults, setExploreResults] = useState<LectureDetailsResponse[]>([]);
+  const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreError, setExploreError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -186,6 +193,39 @@ export default function LectureAssistantDashboard() {
     }
   };
 
+  const fetchExploreResults = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setExploreResults([]);
+      return;
+    }
+    setExploreLoading(true);
+    setExploreError(null);
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/lectures/search?query=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: LectureSearchResponse = await res.json();
+      setExploreResults(data.results);
+    } catch (e: unknown) {
+      setExploreError(e instanceof Error ? e.message : 'Search failed');
+      setExploreResults([]);
+    } finally {
+      setExploreLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const section = searchParams.get('section');
+    const q = searchParams.get('q');
+    if (section === 'explore' && user) {
+      setActiveSection('explore');
+      if (q != null && q !== '') {
+        setExploreQuery(q);
+        fetchExploreResults(q);
+      }
+    }
+  }, [searchParams, user, fetchExploreResults]);
+
   useEffect(() => {
     if (user) {
       if (activeSection === 'lectures') {
@@ -204,7 +244,7 @@ export default function LectureAssistantDashboard() {
     setSelectedConcept(null);
   };
 
-  const handleNavigation = (section: 'live-learn' | 'lectures' | 'classes') => {
+  const handleNavigation = (section: 'live-learn' | 'lectures' | 'classes' | 'explore') => {
     setActiveSection(section);
   };
 
@@ -272,7 +312,12 @@ export default function LectureAssistantDashboard() {
             label="Classes"
             onClick={() => handleNavigation('classes')}
           />
-
+          <SidebarItem
+            active={activeSection === 'explore'}
+            icon="explore"
+            label="Explore"
+            onClick={() => handleNavigation('explore')}
+          />
           <SidebarItem active={false} icon="analytics" label="Analytics" />
           <SidebarItem active={false} icon="settings" label="Settings" />
         </div>
@@ -345,6 +390,11 @@ export default function LectureAssistantDashboard() {
                 My Classes
               </motion.h2>
             )}
+            {activeSection === 'explore' && (
+              <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-neutral-800 tracking-tight">
+                Explore
+              </motion.h2>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -415,6 +465,70 @@ export default function LectureAssistantDashboard() {
                     }} />
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'explore' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="shrink-0 p-6 pb-4 border-b border-white/5">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    fetchExploreResults(exploreQuery);
+                  }}
+                  className="flex gap-3"
+                >
+                  <div className="flex-1 relative">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+                    <input
+                      type="text"
+                      placeholder="Search all lectures by class name or transcript..."
+                      value={exploreQuery}
+                      onChange={(e) => setExploreQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-xl">search</span>
+                    Search
+                  </button>
+                </form>
+                {exploreError && (
+                  <p className="mt-2 text-sm text-red-400">{exploreError}</p>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                {exploreLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <span className="material-symbols-outlined text-4xl text-gray-400 animate-spin">progress_activity</span>
+                  </div>
+                ) : exploreQuery.trim() === '' ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                    <span className="material-symbols-outlined text-5xl mb-4">explore</span>
+                    <p className="text-lg font-medium">Search lectures by class name or transcript</p>
+                    <p className="text-sm mt-1">Type a query above and click Search</p>
+                  </div>
+                ) : exploreResults.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                    <span className="material-symbols-outlined text-5xl mb-4">search_off</span>
+                    <p className="text-lg font-medium">No lectures found for &quot;{exploreQuery}&quot;</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-8">
+                    {exploreResults.map((item) => (
+                      <div key={item.lecture.id} className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]">
+                        <LectureCard
+                          lecture={item.lecture}
+                          onClick={() => loadLectureDetails(item.lecture.id)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

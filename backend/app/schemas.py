@@ -200,3 +200,7 @@ class LectureDetailsResponse(BaseModel):
     simulations: list[AnimationResponse]
     transcripts: list[TranscriptItem]
 
+
+class LectureSearchResponse(BaseModel):
+    results: list[LectureDetailsResponse]
+
