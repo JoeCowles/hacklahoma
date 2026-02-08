@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 
 interface KeyConcept {
   id: string;
@@ -10,45 +11,6 @@ interface KeyConcept {
   summary: string;
   type: 'concept' | 'term' | 'person';
 }
-
-const keyConceptsData: KeyConcept[] = [
-  {
-    id: 'wave-particle',
-    title: 'Wave-Particle Duality',
-    summary: 'The wave-particle duality is a fundamental concept of quantum mechanics that suggests that every particle or quantum entity may be described as either a particle or a wave.',
-    type: 'concept'
-  },
-  {
-    id: 'quantum-mechanics',
-    title: 'Quantum Mechanics',
-    summary: 'Quantum mechanics is a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles.',
-    type: 'concept'
-  },
-  {
-    id: 'schrodinger-equation',
-    title: 'Schrödinger Equation',
-    summary: 'The Schrödinger equation is a linear partial differential equation that governs the wave function of a quantum-mechanical system.',
-    type: 'concept'
-  },
-  {
-    id: 'particle-physics',
-    title: 'Particle Physics',
-    summary: 'Particle physics is a branch of physics that studies the nature of the particles that constitute matter and radiation.',
-    type: 'concept'
-  },
-  {
-    id: 'classical-concepts',
-    title: 'Classical Concepts',
-    summary: 'Classical physics mainly includes the theories of mechanics, electromagnetism, and thermodynamics.',
-    type: 'concept'
-  },
-  {
-    id: 'wave-function',
-    title: 'Wave Function',
-    summary: 'A wave function in quantum physics is a mathematical description of the quantum state of an isolated quantum system.',
-    type: 'concept'
-  }
-];
 
 const lecturesData = [
   { id: 1, title: "Quantum Physics 101", instructor: "Prof. Julian Barnes", time: "10:30 AM", duration: "1h 30m", date: "Today", status: "Live" },
@@ -250,7 +212,13 @@ export default function LectureAssistantDashboard() {
                     exit={{ opacity: 0 }}
                     className="flex-[2] h-full"
                   >
-                    <TranscriptionCard />
+                    <TranscriptionCard
+                      isRecording={isRecording}
+                      transcripts={transcripts}
+                      error={error}
+                      startRecording={startRecording}
+                      stopRecording={stopRecording}
+                    />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -260,8 +228,8 @@ export default function LectureAssistantDashboard() {
                     exit={{ opacity: 0, x: -20 }}
                     className="flex-[2] flex flex-col h-full bg-black/20"
                   >
-                    {/* Concept Detail View */}
-                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20 backdrop-blur-xl">
+                    {/* Concept Detail View Header */}
+                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-fuchsia-500/20 rounded-xl text-fuchsia-400 ring-1 ring-fuchsia-500/30">
                           <span className="material-symbols-outlined text-2xl">lightbulb</span>
@@ -273,82 +241,83 @@ export default function LectureAssistantDashboard() {
                       </button>
                     </div>
 
-<<<<<<< HEAD
-                    <div className="p-10 overflow-y-auto custom-scrollbar space-y-10">
-                      <div className="glass-panel p-8 rounded-3xl border-white/10">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">AI Summary</h4>
-                        <p className="text-xl leading-relaxed text-gray-100 font-light">{selectedConcept.summary}</p>
-                      </div>
-
-                      <div className="w-full aspect-video rounded-3xl overflow-hidden border border-white/10 relative group cursor-pointer shadow-2xl">
-                        <div className="absolute inset-0 bg-gradient-to-br from-violet-900/40 to-fuchsia-900/40 opacity-50 group-hover:opacity-70 transition-opacity" />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="material-symbols-outlined text-6xl text-white/50 group-hover:text-white drop-shadow-xl transition-all transform group-hover:scale-110 duration-300">play_circle</span>
-                          <span className="mt-6 text-sm font-bold text-white/80 uppercase tracking-widest bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">Interactive Simulation</span>
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-10">
+                      
+                      {/* Concept Summary Card */}
+                      <section className="space-y-4">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Concept Overview</h4>
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-xl">
+                          <p className="text-xl leading-relaxed text-gray-200 font-medium">
+                            {selectedConcept.summary}
+                          </p>
                         </div>
-=======
-                    {/* Related Material Section */}
-                    <div className="space-y-4">
-                      <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200 uppercase tracking-wide">Related Material</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        {/* Interactive Simulation Card */}
-                        {relatedSimulation && (
-                          <div className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">science</span>
-                                Interactive Simulation
-                              </span>
-                            </div>
-                            <div className="w-full aspect-video bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm hover:border-primary/50 transition-colors">
-                              {relatedSimulation.code ? (
-                                <iframe
-                                  srcDoc={relatedSimulation.code}
-                                  className="w-full h-full border-none"
-                                  title={`Simulation: ${selectedConcept.title}`}
-                                  sandbox="allow-scripts"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                                  <span className="material-symbols-outlined text-4xl text-gray-300 animate-pulse mb-2">science</span>
-                                  <p className="text-sm text-[#616f89]">Generating simulation...</p>
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-xs text-[#616f89] dark:text-slate-400 italic px-1">
-                              {relatedSimulation.description}
-                            </p>
-                          </div>
-                        )}
+                      </section>
 
-                        {/* YouTube Videos */}
-                        {relatedVideos.map((video, i) => (
-                          <div key={i} className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded uppercase flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">play_circle</span>
-                                Video Reference
-                              </span>
+                      {/* Related Material Section */}
+                      <section className="space-y-6">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Related Material</h4>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                          
+                          {/* Interactive Simulation Card */}
+                          {relatedSimulation && (
+                            <div className="flex flex-col gap-4">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 rounded-lg uppercase flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-[14px]">science</span>
+                                  Interactive Simulation
+                                </span>
+                              </div>
+                              <div className="w-full aspect-video bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl hover:border-violet-500/30 transition-all group relative">
+                                {relatedSimulation.code ? (
+                                  <iframe
+                                    srcDoc={relatedSimulation.code}
+                                    className="w-full h-full border-none bg-white"
+                                    title={`Simulation: ${selectedConcept.title}`}
+                                    sandbox="allow-scripts"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                                    <span className="material-symbols-outlined text-5xl text-gray-600 animate-pulse mb-4">science</span>
+                                    <p className="text-sm text-gray-400 font-medium">Generating visualization...</p>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-400 italic px-2 leading-relaxed">
+                                {relatedSimulation.description}
+                              </p>
                             </div>
-                            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-slate-800">
-                              <iframe
-                                width="100%"
-                                height="100%"
-                                src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}`}
-                                title={video.title}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                              ></iframe>
+                          )}
+
+                          {/* YouTube Videos */}
+                          {relatedVideos.map((video, i) => (
+                            <div key={i} className="flex flex-col gap-4">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg uppercase flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-[14px]">play_circle</span>
+                                  Video Reference
+                                </span>
+                              </div>
+                              <div className="aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 hover:border-red-500/30 transition-all">
+                                <iframe
+                                  width="100%"
+                                  height="100%"
+                                  src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}`}
+                                  title={video.title}
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  className="w-full h-full opacity-90 hover:opacity-100 transition-opacity"
+                                ></iframe>
+                              </div>
+                              <p className="text-sm font-bold text-white px-2 line-clamp-1 tracking-wide">
+                                {video.title}
+                              </p>
                             </div>
-                            <p className="text-xs font-bold text-[#111318] dark:text-slate-200 px-1 line-clamp-1">
-                              {video.title}
-                            </p>
-                          </div>
-                        ))}
->>>>>>> cb2d02a (sims)
-                      </div>
+                          ))}
+                        </div>
+                      </section>
+
+                      <div className="h-10" /> {/* Bottom Spacer */}
                     </div>
                   </motion.div>
                 )}
@@ -362,7 +331,7 @@ export default function LectureAssistantDashboard() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-                  {keyConceptsData.map((concept) => (
+                  {allConcepts.map((concept) => (
                     <motion.div
                       layoutId={concept.id}
                       key={concept.id}

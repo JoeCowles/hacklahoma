@@ -3,7 +3,7 @@ import websockets
 import json
 
 async def test_websocket():
-    uri = "ws://localhost:8000/ws/test_user"
+    uri = "ws://127.0.0.1:8000/ws/test_user"
     try:
         async with websockets.connect(uri) as websocket:
             print(f"Connected to {uri}")

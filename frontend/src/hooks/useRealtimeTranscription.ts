@@ -171,11 +171,11 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
 
         try {
             // 1. Connect to Backend WebSocket
-            const backendSocket = new WebSocket("ws://localhost:8000/ws/user_1");
+            const backendSocket = new WebSocket("ws://127.0.0.1:8000/ws/user_1");
             backendSocketRef.current = backendSocket;
             
             backendSocket.onopen = () => {
-                console.log("Connected to Backend WebSocket");
+                console.log("✅ Connected to Backend WebSocket at 127.0.0.1:8000");
             };
             
             backendSocket.onmessage = (event) => {

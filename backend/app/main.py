@@ -93,8 +93,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     lecture_id = message.get("lecture_id", "default_lecture")
                     
                     if text:
+                        # Get existing concepts for this lecture
+                        existing_concept_list = [c.keyword for c in CONCEPTS.get(lecture_id, [])]
+                        
                         # Run the pipeline
-                        result = await pipeline_service.process_chunk(text, previous_context, lecture_id)
+                        result = await pipeline_service.process_chunk(text, previous_context, lecture_id, existing_concept_list)
                         
                         # Send back the results
                         await websocket.send_json({

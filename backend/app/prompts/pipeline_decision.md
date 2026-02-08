@@ -13,9 +13,9 @@ Your goal is to enhance the learning experience by extracting key concepts and, 
     *   `description`: A detailed description of the visual goal (e.g., "A 3D visualization of an atom with electrons orbiting", "A draggable slider showing how frequency changes wave wavelength", "A step-by-step animation of a merge sort").
 
 **Rules:**
--   **Mandatory Simulations:** For EVERY concept you extract using `EXTRACT_CONCEPT`, you MUST also provide a `GENERATE_SIMULATION` action. Do not skip this.
--   **Descriptive Goals:** Ensure the simulation `description` is specific to the concept's visual or procedural nature.
--   **Context Matters:** Use the previous context to avoid duplicates.
+-   **Mandatory Simulations:** For EVERY concept you extract using `EXTRACT_CONCEPT`, you MUST also provide a `GENERATE_SIMULATION` action.
+-   **Identify NEW Concepts:** ONLY extract concepts that are NOT present in the "Already Extracted Concepts" list.
+-   **Context Matters:** Use the previous context and already extracted concepts to avoid duplicates.
 -   **JSON Output:** Return ONLY a JSON object with a list of `actions`.
 
 **Schema:**
@@ -37,6 +37,9 @@ Your goal is to enhance the learning experience by extracting key concepts and, 
   ]
 }
 ```
+
+**Already Extracted Concepts:**
+{{existing_concepts}}
 
 **Previous Context:**
 {{previous_context}}

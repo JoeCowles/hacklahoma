@@ -19,16 +19,21 @@ class PipelineService:
         self.youtube = youtube_client
         self.simulation = simulation_service
 
-    async def process_chunk(self, text: str, previous_context: str, lecture_id: str) -> dict[str, Any]:
+    async def process_chunk(self, text: str, previous_context: str, lecture_id: str, existing_concepts: list[str] = None) -> dict[str, Any]:
         prompt_template = load_prompt("pipeline_decision")
+        
+        context_concepts = ", ".join(existing_concepts) if existing_concepts else "None"
+        
         prompt = (
             prompt_template.replace("{{previous_context}}", previous_context)
             .replace("{{transcript_chunk}}", text)
+            .replace("{{existing_concepts}}", context_concepts)
         )
 
         try:
             # Async call to Gemini
             data = await self.gemini.generate_json_async(prompt)
+            print(f"DEBUG: Pipeline raw output: {json.dumps(data)}")
             print(f"DEBUG: Pipeline received actions: {[a.get('type') for a in (data or {}).get('actions', [])]}")
         except Exception as e:
             print(f"Pipeline Gemini Error: {e}")
@@ -88,7 +93,6 @@ class PipelineService:
                         concept_id = matching_concept["id"]
                     else:
                         # Fallback to a keyword-based ID that the frontend can use to link
-                        import hashlib
                         slug = concept.lower().replace(" ", "_")
                         concept_id = f"sim_link_{slug}"
 
