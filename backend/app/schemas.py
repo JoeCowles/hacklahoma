@@ -164,19 +164,44 @@ class OnboardingResponse(BaseModel):
     status: str
 
 
+class Flashcard(BaseModel):
+    id: str | None = None
+    concept_id: str | None = None
+    front: str
+    back: str
+
+
+class Question(BaseModel):
+    id: str
+    text: str
+    options: list[str]
+    correct_option_index: int
+    explanation: str | None = None
+
+
+class Quiz(BaseModel):
+    id: str | None = None
+    concept_id: str | None = None
+    topic: str
+    questions: list[Question]
+    status: str = "pending" # pending, ready, error
+
+
 class CreateLectureRequest(BaseModel):
-    title: str
-    instructor: str | None = None
-    subject: str | None = None
+    professor: str
+    school: str
+    class_name: str
+    class_time: str
+    student_id: str
 
 
 class Lecture(BaseModel):
     id: str
-    title: str
-    instructor: str | None = None
-    date: str | None = None
-    status: str | None = None
-    duration: str | None = None
+    professor: str
+    school: str
+    class_name: str
+    class_time: str
+    student_id: str
 
 
 class LectureListResponse(BaseModel):

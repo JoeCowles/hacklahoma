@@ -10,6 +10,7 @@ from .services.elevenlabs import ElevenLabsClient
 from .services.youtube import YouTubeClient
 from .services.pipeline import PipelineService
 from .services.simulation import SimulationService
+from .services.quiz import QuizService
 # from .services.google_search import search_youtube_via_google
 from .schemas import (
     TranscriptChunk,
@@ -84,6 +85,7 @@ else:
 
 # Temporary in-memory stores for scaffold
 CONCEPTS: dict[str, list[Concept]] = {}
+QUIZZES: dict[str, list[dict]] = {}
 CREDITS: dict[str, int] = {}
 SHARES: dict[str, ShareResponse] = {}
 USERS: dict[str, dict[str, str]] = {}
@@ -94,6 +96,7 @@ simulation_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_
 elevenlabs_client = ElevenLabsClient(settings.elevenlabs_api_key or "")
 youtube_client = YouTubeClient()
 simulation_service = SimulationService(simulation_client)
+quiz_service = QuizService(simulation_client)
 pipeline_service = PipelineService(gemini_client, youtube_client, simulation_service)
 
 PROMPT_DIR = Path(__file__).parent / "prompts"
@@ -143,6 +146,38 @@ async def run_simulation_background(websocket: WebSocket, simulation_service: Si
     except Exception as e:
         print(f"Error in background simulation task: {e}")
 
+async def run_quiz_background(websocket: WebSocket, quiz_service: QuizService, quiz_request: dict, lecture_id: str, previous_context: str, text: str):
+    try:
+        print(f"DEBUG: Starting background quiz generation for topic: {quiz_request['topic']}")
+        quiz_data = await quiz_service.generate_quiz(
+            topic=quiz_request["topic"],
+            context=f"{previous_context}\n\nRecent Transcript: {text}"
+        )
+        
+        questions = quiz_data.get("questions", [])
+        
+        # Send update to client
+        try:
+            await websocket.send_json({
+                "type": "pipeline_result",
+                "lecture_id": lecture_id,
+                "results": {
+                    "concepts": [],
+                    "videos": [],
+                    "simulations": [],
+                    "quizzes": [{
+                        **quiz_request,
+                        "status": "ready",
+                        "questions": questions
+                    }]
+                }
+            })
+            print(f"DEBUG: Background quiz for {quiz_request['topic']} completed and sent.")
+        except Exception as e:
+            print(f"Could not send background quiz result: {e}")
+    except Exception as e:
+        print(f"Error in background quiz task: {e}")
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await websocket.accept()
@@ -158,14 +193,34 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     text = message.get("text", "")
                     previous_context = message.get("previous_context", "")
                     lecture_id = message.get("lecture_id", "default_lecture")
+                    is_final = message.get("is_final", False)
                     
-                    if text:
+                    if text or is_final:
                         # Get existing concepts for this lecture
                         existing_concepts_map = {c.keyword: c.id for c in CONCEPTS.get(lecture_id, [])}
                         
                         # Run the pipeline (now returns concepts immediately, simulations are pending)
                         result = await pipeline_service.process_chunk(text, previous_context, lecture_id, existing_concepts_map)
                         
+                        # Logic: If this is the final commit, check if we have any quizzes.
+                        # If not, force one.
+                        if is_final:
+                            if not QUIZZES.get(lecture_id):
+                                print(f"DEBUG: Final commit received and no quizzes found for {lecture_id}. Forcing a summary quiz.")
+                                # Create a summary quiz request
+                                topic = "Lecture Summary"
+                                if CONCEPTS.get(lecture_id):
+                                    topic = f"Review of {', '.join([c.keyword for c in CONCEPTS[lecture_id][:3]])}"
+                                
+                                quiz_id = f"quiz_final_{int(time.time()*1000)}"
+                                forced_quiz = {
+                                    "id": quiz_id,
+                                    "topic": topic,
+                                    "status": "pending",
+                                    "questions": []
+                                }
+                                result.setdefault("quizzes", []).append(forced_quiz)
+
                         # Send back the initial results
                         try:
                             await websocket.send_json({
@@ -186,6 +241,19 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                     sim, 
                                     lecture_id, 
                                     previous_context, 
+                                    text
+                                ))
+                        
+                        # Handle background quiz generation
+                        for quiz in result.get("quizzes", []):
+                            if quiz.get("status") == "pending":
+                                QUIZZES.setdefault(lecture_id, []).append(quiz)
+                                asyncio.create_task(run_quiz_background(
+                                    websocket,
+                                    quiz_service,
+                                    quiz,
+                                    lecture_id,
+                                    previous_context,
                                     text
                                 ))
                         

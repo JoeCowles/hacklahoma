@@ -14,13 +14,14 @@ class GeminiClient:
             http_options={'api_version': 'v1beta'}
         )
 
-    def generate_json(self, prompt: str) -> Any:
+    def generate_json(self, prompt: str, schema: Any = None) -> Any:
         try:
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    response_schema=schema,
                     safety_settings=[
                         types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
                         types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
@@ -34,13 +35,14 @@ class GeminiClient:
             print(f"Gemini JSON Error: {e}")
             return None
 
-    async def generate_json_async(self, prompt: str) -> Any:
+    async def generate_json_async(self, prompt: str, schema: Any = None) -> Any:
         try:
             response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    response_schema=schema,
                     safety_settings=[
                         types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
                         types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),

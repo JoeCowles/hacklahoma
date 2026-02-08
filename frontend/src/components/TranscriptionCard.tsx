@@ -13,15 +13,27 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 interface TranscriptionCardProps {
   isRecording: boolean;
+  isPaused: boolean;
   transcripts: TranscriptionItem[];
   error: string | null;
   startRecording: () => void;
-  stopRecording: () => void;
+  pauseRecording: () => void;
+  endSession: () => void;
   concepts: Concept[];
   onConceptClick: (concept: Concept) => void;
 }
 
-export function TranscriptionCard({ isRecording, transcripts, error, startRecording, stopRecording, concepts, onConceptClick }: TranscriptionCardProps) {
+export function TranscriptionCard({ 
+  isRecording, 
+  isPaused,
+  transcripts, 
+  error, 
+  startRecording, 
+  pauseRecording,
+  endSession, 
+  concepts, 
+  onConceptClick 
+}: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<{ text: string, x: number, y: number } | null>(null);
@@ -87,8 +99,10 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
     >
       <TranscriptionHeader
         isRecording={isRecording}
+        isPaused={isPaused}
         onStart={startRecording}
-        onStop={stopRecording}
+        onPause={pauseRecording}
+        onEnd={endSession}
       />
 
       <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-8 relative">
@@ -171,12 +185,16 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
 
 function TranscriptionHeader({
   isRecording,
+  isPaused,
   onStart,
-  onStop
+  onPause,
+  onEnd
 }: {
   isRecording: boolean;
+  isPaused: boolean;
   onStart: () => void;
-  onStop: () => void;
+  onPause: () => void;
+  onEnd: () => void;
 }) {
   return (
     <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-black/20 sticky top-0 z-10 shrink-0 backdrop-blur-xl">
@@ -193,28 +211,45 @@ function TranscriptionHeader({
               className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-[0_0_12px_rgba(239,68,68,0.8)]"
             />
           )}
+          {isPaused && (
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block shadow-[0_0_12px_rgba(234,179,8,0.8)]" />
+          )}
         </h2>
       </div>
 
       <div className="flex items-center gap-4">
         <motion.button
-          onClick={isRecording ? onStop : onStart}
+          onClick={isRecording ? onPause : onStart}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
           className={cn(
-            "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all min-w-[160px] justify-center shadow-lg backdrop-blur-sm border",
+            "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all min-w-[140px] justify-center shadow-lg backdrop-blur-sm border",
             isRecording
-              ? "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 hover:shadow-red-500/20"
+              ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20 hover:border-yellow-500/40 hover:shadow-yellow-500/20"
               : "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20 hover:border-green-500/40 hover:shadow-green-500/20"
           )}
         >
           <span className="material-symbols-outlined text-xl">
-            {isRecording ? "stop_circle" : "play_circle"}
+            {isRecording ? "pause_circle" : "play_circle"}
           </span>
           <span className="inline uppercase tracking-wide">
-            {isRecording ? "End Session" : "Start Session"}
+            {isRecording ? "Pause" : isPaused ? "Resume" : "Start"}
           </span>
         </motion.button>
+
+        {(isRecording || isPaused) && (
+          <motion.button
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={onEnd}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all min-w-[140px] justify-center shadow-lg backdrop-blur-sm border bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 hover:shadow-red-500/20"
+          >
+            <span className="material-symbols-outlined text-xl">stop_circle</span>
+            <span className="inline uppercase tracking-wide">End Session</span>
+          </motion.button>
+        )}
 
         <div className="h-6 w-px bg-white/10 mx-2"></div>
 

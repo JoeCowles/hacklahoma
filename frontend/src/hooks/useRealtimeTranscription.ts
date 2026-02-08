@@ -8,13 +8,17 @@ export interface TranscriptionItem {
 
 interface UseRealtimeTranscriptionReturn {
     isRecording: boolean;
+    isPaused: boolean;
     transcripts: TranscriptionItem[];
     error: string | null;
     startRecording: () => Promise<void>;
-    stopRecording: () => void;
+    pauseRecording: () => void;
+    endSession: () => void;
     concepts: any[];
     videos: any[];
     simulations: any[];
+    flashcards: any[];
+    quizzes: any[];
 }
 
 const ELEVENLABS_REALTIME_URL = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
@@ -69,6 +73,7 @@ async function fetchRealtimeToken(): Promise<string> {
 
 export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
     const [isRecording, setIsRecording] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [transcripts, setTranscripts] = useState<TranscriptionItem[]>([]);
     const [error, setError] = useState<string | null>(null);
     
@@ -76,6 +81,8 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
     const [concepts, setConcepts] = useState<any[]>([]);
     const [videos, setVideos] = useState<any[]>([]);
     const [simulations, setSimulations] = useState<any[]>([]);
+    const [flashcards, setFlashcards] = useState<any[]>([]);
+    const [quizzes, setQuizzes] = useState<any[]>([]);
 
     const socketRef = useRef<WebSocket | null>(null);
     const backendSocketRef = useRef<WebSocket | null>(null);
@@ -84,7 +91,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    const cleanup = useCallback(() => {
+    const cleanupTranscription = useCallback(() => {
         if (processorRef.current) {
             processorRef.current.disconnect();
             processorRef.current.onaudioprocess = null;
@@ -163,6 +170,27 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                                 return next;
                             });
                         }
+                        if (results.flashcards) {
+                            setFlashcards(prev => {
+                                const existingIds = new Set(prev.map(f => f.id));
+                                const newCards = results.flashcards.filter((f: any) => !existingIds.has(f.id));
+                                return [...prev, ...newCards];
+                            });
+                        }
+                        if (results.quizzes) {
+                             setQuizzes(prev => {
+                                const next = [...prev];
+                                results.quizzes.forEach((newQuiz: any) => {
+                                    const index = next.findIndex(q => q.id === newQuiz.id);
+                                    if (index !== -1) {
+                                        next[index] = { ...next[index], ...newQuiz };
+                                    } else {
+                                        next.push(newQuiz);
+                                    }
+                                });
+                                return next;
+                            });
+                        }
                     }
                 } catch (e) {
                     console.error("Failed to parse backend message", e);
@@ -182,11 +210,16 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                 backendSocketRef.current.close();
                 backendSocketRef.current = null;
             }
-            cleanup();
+            cleanupTranscription();
         };
-    }, [cleanup]);
+    }, [cleanupTranscription]);
 
-    const stopRecording = useCallback(() => {
+    const pauseRecording = useCallback(() => {
+        setIsPaused(true);
+        cleanupTranscription();
+    }, [cleanupTranscription]);
+
+    const endSession = useCallback(() => {
         // Force commit the last partial transcript if it exists
         setTranscripts((prev) => {
             const last = prev[prev.length - 1];
@@ -202,17 +235,32 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                         lecture_id: lectureId,
                         chunk_id: chunkId,
                         text: transcriptText,
-                        previous_context: prev.length > 1 ? prev[prev.length - 2].text : ""
+                        previous_context: prev.length > 1 ? prev[prev.length - 2].text : "",
+                        is_final: true
                     }));
                 }
                 
-                return [...prev.slice(0, -1), { ...last, type: "committed" }];
+                return [...prev.slice(0, -1), { ...last, text: transcriptText, type: "committed" }];
+            } else if (prev.length > 0) {
+                 // Send a final marker even if no partial transcript exists
+                 const lectureId = "lecture_" + new Date().toISOString().split('T')[0];
+                 if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
+                    backendSocketRef.current.send(JSON.stringify({
+                        type: "transcript_commit",
+                        lecture_id: lectureId,
+                        chunk_id: "chunk_marker_" + Date.now(),
+                        text: "",
+                        previous_context: prev[prev.length - 1].text,
+                        is_final: true
+                    }));
+                }
             }
             return prev;
         });
 
-        cleanup();
-    }, [cleanup]);
+        setIsPaused(false);
+        cleanupTranscription();
+    }, [cleanupTranscription]);
 
     const startRecording = useCallback(async () => {
         if (isRecording) {
@@ -220,6 +268,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
         }
 
         setError(null);
+        setIsPaused(false);
 
         try {
             const token = await fetchRealtimeToken();
@@ -232,8 +281,6 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                     autoGainControl: true,
                 },
             });
-
-            streamRef.current = stream;
 
             streamRef.current = stream;
 
@@ -333,7 +380,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
             };
 
             socket.onclose = () => {
-                cleanup();
+                cleanupTranscription();
             };
 
             processor.onaudioprocess = (event) => {
@@ -355,9 +402,9 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
         } catch (caught) {
             const message = caught instanceof Error ? caught.message : "Failed to start realtime transcription";
             setError(message);
-            cleanup();
+            cleanupTranscription();
         }
-    }, [cleanup, isRecording, transcripts]); // Added transcripts to dependency array for context
+    }, [cleanupTranscription, isRecording, transcripts]); // Added transcripts to dependency array for context
 
-    return { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations };
+    return { isRecording, isPaused, transcripts, error, startRecording, pauseRecording, endSession, concepts, videos, simulations, flashcards, quizzes };
 }

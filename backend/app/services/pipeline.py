@@ -45,7 +45,9 @@ class PipelineService:
         results = {
             "concepts": [],
             "videos": [],
-            "simulations": []
+            "simulations": [],
+            "flashcards": [],
+            "quizzes": []
         }
 
         for action in actions:
@@ -113,10 +115,54 @@ class PipelineService:
                         "code": None
                     })
 
+            elif a_type == "CREATE_FLASHCARD":
+                front = payload.get("front")
+                back = payload.get("back")
+                concept = payload.get("concept") # Optional linking
+                if front and back:
+                    # Try to link to concept
+                    concept_id = None
+                    if concept:
+                        matching_concept = next((c for c in results["concepts"] if c["keyword"].lower() == concept.lower()), None)
+                        if matching_concept:
+                            concept_id = matching_concept["id"]
+                        elif existing_concepts and concept in existing_concepts:
+                            concept_id = existing_concepts[concept]
+                    
+                    flashcard_id = f"fc_{int(time.time()*1000)}_{len(results['flashcards'])}"
+                    results["flashcards"].append({
+                        "id": flashcard_id,
+                        "concept_id": concept_id,
+                        "front": front,
+                        "back": back
+                    })
+
+            elif a_type == "GENERATE_QUIZ":
+                topic = payload.get("topic")
+                concept = payload.get("concept")
+                if topic:
+                    concept_id = None
+                    if concept:
+                        matching_concept = next((c for c in results["concepts"] if c["keyword"].lower() == concept.lower()), None)
+                        if matching_concept:
+                            concept_id = matching_concept["id"]
+                        elif existing_concepts and concept in existing_concepts:
+                            concept_id = existing_concepts[concept]
+
+                    quiz_id = f"quiz_{int(time.time()*1000)}_{len(results['quizzes'])}"
+                    results["quizzes"].append({
+                        "id": quiz_id,
+                        "topic": topic,
+                        "concept_id": concept_id,
+                        "status": "pending",
+                        "questions": []
+                    })
+
         # Fallback: Ensure every concept extracted has a corresponding simulation (now also pending) and video search
         extracted_keywords = [c["keyword"] for c in results["concepts"]]
         simulated_keywords = [s["concept"] for s in results["simulations"]]
         video_context_keywords = [v.get("context_concept") for v in results["videos"]]
+        # We won't force flashcards in fallback to avoid noise, but could if desired.
         
         for concept_obj in results["concepts"]:
             # Fallback for simulations
