@@ -14,9 +14,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-background text-foreground min-h-screen flex flex-col antialiased selection:bg-primary/30 selection:text-white">
-        <header className="bg-gray-800 p-4 text-white flex justify-center">
-            <GlobalSearchBar />
-        </header>
         {children}
       </body>
     </html>

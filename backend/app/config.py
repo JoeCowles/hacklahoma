@@ -7,7 +7,7 @@ class Settings(BaseSettings):
 
     environment: str = "dev"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3-flash-preview"
     gemini_sim_model: str = "gemini-3-flash-preview"
     gemini_quiz_model: str = "gemini-3-flash-preview"
     google_api_key: str = ""
