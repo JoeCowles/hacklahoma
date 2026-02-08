@@ -4,6 +4,7 @@ export interface TranscriptionItem {
     time: string;
     text: string;
     type: "partial" | "committed";
+    chunkId?: string;
 }
 
 interface UseRealtimeTranscriptionReturn {
@@ -93,10 +94,16 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
 
     const socketRef = useRef<WebSocket | null>(null);
     const backendSocketRef = useRef<WebSocket | null>(null);
+    const transcriptsRef = useRef<TranscriptionItem[]>([]);
+    const lastCommittedTextRef = useRef<string | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+
+    useEffect(() => {
+        transcriptsRef.current = transcripts;
+    }, [transcripts]);
 
     const cleanupTranscription = useCallback(() => {
         if (processorRef.current) {
@@ -179,9 +186,16 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                         }
                         if (results.flashcards) {
                             setFlashcards(prev => {
-                                const existingIds = new Set(prev.map(f => f.id));
-                                const newCards = results.flashcards.filter((f: any) => !existingIds.has(f.id));
-                                return [...prev, ...newCards];
+                                const next = [...prev];
+                                results.flashcards.forEach((newCard: any) => {
+                                    const index = next.findIndex(f => f.id === newCard.id);
+                                    if (index !== -1) {
+                                        next[index] = { ...next[index], ...newCard };
+                                    } else {
+                                        next.push(newCard);
+                                    }
+                                });
+                                return next;
                             });
                         }
                         if (results.quizzes) {
@@ -232,14 +246,20 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
             const last = prev[prev.length - 1];
             if (last && last.type === "partial" && last.text.trim()) {
                 const transcriptText = last.text;
-                const lectureId = "lecture_" + new Date().toISOString().split('T')[0];
+                const finalLectureId = lectureId || "lecture_" + new Date().toISOString().split('T')[0];
                 const chunkId = "chunk_final_" + Date.now();
+
+                // Deduplication
+                if (lastCommittedTextRef.current === transcriptText) {
+                    return prev;
+                }
+                lastCommittedTextRef.current = transcriptText;
 
                 // Send to Backend WebSocket before cleaning up
                 if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
                     backendSocketRef.current.send(JSON.stringify({
                         type: "transcript_commit",
-                        lecture_id: lectureId,
+                        lecture_id: finalLectureId,
                         chunk_id: chunkId,
                         text: transcriptText,
                         previous_context: prev.length > 1 ? prev[prev.length - 2].text : "",
@@ -247,14 +267,14 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                     }));
                 }
 
-                return [...prev.slice(0, -1), { ...last, text: transcriptText, type: "committed" }];
+                return [...prev.slice(0, -1), { ...last, text: transcriptText, type: "committed", chunkId: chunkId }];
             } else if (prev.length > 0) {
                 // Send a final marker even if no partial transcript exists
-                const lectureId = "lecture_" + new Date().toISOString().split('T')[0];
+                const finalLectureId = lectureId || "lecture_" + new Date().toISOString().split('T')[0];
                 if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
                     backendSocketRef.current.send(JSON.stringify({
                         type: "transcript_commit",
-                        lecture_id: lectureId,
+                        lecture_id: finalLectureId,
                         chunk_id: "chunk_marker_" + Date.now(),
                         text: "",
                         previous_context: prev[prev.length - 1].text,
@@ -267,7 +287,7 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
 
         setIsPaused(false);
         cleanupTranscription();
-    }, [cleanupTranscription]);
+    }, [cleanupTranscription, lectureId]);
 
     const startRecording = useCallback(async () => {
         if (isRecording) {
@@ -346,6 +366,13 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                     if ((data.message_type === "committed_transcript" || data.message_type === "committed_transcript_with_timestamps") && data.text) {
                         const transcriptText = data.text;
 
+                        // Deduplication: If we receive both committed types for the same text, only process once
+                        if (lastCommittedTextRef.current === transcriptText) {
+                            console.log("DEBUG: Skipping duplicate commit for:", transcriptText);
+                            return;
+                        }
+                        lastCommittedTextRef.current = transcriptText;
+
                         // Generate IDs for concept extraction
                         // Use passed lectureId or fallback to daily ID if null
                         const finalLectureId = lectureId || "lecture_" + new Date().toISOString().split('T')[0];
@@ -358,7 +385,7 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                                 lecture_id: finalLectureId,
                                 chunk_id: chunkId,
                                 text: transcriptText,
-                                previous_context: transcripts.length > 0 ? transcripts[transcripts.length - 1].text : ""
+                                previous_context: transcriptsRef.current.length > 0 ? transcriptsRef.current[transcriptsRef.current.length - 1].text : ""
                             }));
                         }
 
@@ -366,7 +393,7 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                             const last = prev[prev.length - 1];
                             // Only update if the last item is partial. If it's already committed, ignore this update to prevent duplicates.
                             if (last?.type === "partial") {
-                                return [...prev.slice(0, -1), { ...last, text: transcriptText, type: "committed" }];
+                                return [...prev.slice(0, -1), { ...last, text: transcriptText, type: "committed", chunkId: chunkId }];
                             }
                             // If last is not partial, we ignore the committed transcript to avoid appending duplicates.
                             // This relies on the assumption that a partial transcript for the segment has already been received.

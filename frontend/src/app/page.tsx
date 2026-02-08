@@ -75,7 +75,8 @@ export default function LectureAssistantDashboard() {
     id: f.id,
     concept_id: f.concept_id,
     front: f.front,
-    back: f.back
+    back: f.back,
+    status: f.status
   }));
 
   const allQuizzes: Quiz[] = quizzes.map((q: any) => ({
@@ -200,7 +201,7 @@ export default function LectureAssistantDashboard() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-600/20 shrink-0 ring-1 ring-white/10">
             <span className="material-symbols-outlined text-white text-2xl">school</span>
           </div>
-          <h1 className="font-bold text-xl tracking-tight hidden md:block text-neutral-800">LearnStream</h1>
+          <h1 className="font-bold text-xl tracking-tight hidden md:block text-neutral-800">Interactable</h1>
         </div>
 
         <div className="flex flex-col gap-3 mt-4">
@@ -406,6 +407,7 @@ export default function LectureAssistantDashboard() {
                       pauseRecording={pauseRecording}
                       endSession={endSession}
                       concepts={allConcepts}
+                      simulations={simulations}
                       onConceptClick={handleConceptClick}
                     />
                   </motion.div>

@@ -50,7 +50,7 @@ from .schemas import (
 from pymongo import MongoClient
 from pathlib import Path
 
-app = FastAPI(title="LearnStream API", version="0.1.0")
+app = FastAPI(title="Interactable API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -98,11 +98,12 @@ USERS: dict[str, dict[str, str]] = {}
 SESSIONS: dict[str, str] = {}
 
 gemini_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_model)
-simulation_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_simulation_model)
+simulation_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_sim_model)
+quiz_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_quiz_model)
 elevenlabs_client = ElevenLabsClient(settings.elevenlabs_api_key or "")
 youtube_client = YouTubeClient()
 simulation_service = SimulationService(simulation_client)
-quiz_service = QuizService(simulation_client)
+quiz_service = QuizService(quiz_client)
 pipeline_service = PipelineService(gemini_client, youtube_client, simulation_service)
 
 PROMPT_DIR = Path(__file__).parent / "prompts"
@@ -200,6 +201,347 @@ async def run_quiz_background(websocket: WebSocket, quiz_service: QuizService, q
     except Exception as e:
         print(f"Error in background quiz task: {e}")
 
+async def run_flashcard_background(websocket: WebSocket, quiz_service: QuizService, fc_request: dict, lecture_id: str, previous_context: str, text: str):
+    try:
+        concept = fc_request.get("concept") or fc_request.get("topic")
+        print(f"DEBUG: Starting background flashcard generation for: {concept}")
+        
+        cards = await quiz_service.generate_flashcards(
+            concept=concept,
+            context=f"{previous_context}\n\nRecent Transcript: {text}",
+            count=1
+        )
+        
+        if cards:
+            card = cards[0]
+            # Send update to client
+            try:
+                await websocket.send_json({
+                    "type": "pipeline_result",
+                    "lecture_id": lecture_id,
+                    "results": {
+                        "concepts": [],
+                        "videos": [],
+                        "simulations": [],
+                        "quizzes": [],
+                        "flashcards": [{
+                            **fc_request,
+                            "status": "ready",
+                            "front": card.get("front"),
+                            "back": card.get("back")
+                        }]
+                    }
+                })
+                print(f"DEBUG: Background flashcard for {concept} completed and sent.")
+            except Exception as e:
+                print(f"Could not send background flashcard result: {e}")
+    except Exception as e:
+        print(f"Error in background flashcard task: {e}")
+
+async def run_video_search_background(websocket: WebSocket, youtube_client: YouTubeClient, video_request: dict, lecture_id: str):
+    try:
+        query = video_request.get("query")
+        if not query:
+            return
+
+        print(f"DEBUG: Starting background video search for: {query}")
+        # Search is synchronous, but running in a thread/executor is better if it blocks.
+        # Since we are in an async function, direct blocking call will block the event loop if not careful.
+        # However, for simplicity in this scaffold, we call it directly assuming it's fast enough or we accept the minor block.
+        # Ideally: await asyncio.to_thread(youtube_client.search, query, limit=2)
+        video_results = await asyncio.to_thread(youtube_client.search, query, limit=2)
+        
+        for v in video_results:
+            v["context_concept"] = video_request.get("context_concept")
+            v["context_concept_id"] = video_request.get("context_concept_id")
+
+        if video_results:
+             # Send update to client
+            try:
+                await websocket.send_json({
+                    "type": "pipeline_result",
+                    "lecture_id": lecture_id,
+                    "results": {
+                        "concepts": [],
+                        "videos": video_results,
+                        "simulations": [],
+                        "quizzes": [],
+                        "flashcards": []
+                    }
+                })
+                print(f"DEBUG: Background video search for {query} completed and sent.")
+                
+                # Persist video results
+                if db is not None:
+                    video_docs = []
+                    for v in video_results:
+                        v_doc = v.copy()
+                        v_doc["lecture_id"] = lecture_id
+                        v_doc["timestamp"] = time.time()
+                        video_docs.append(v_doc)
+                    if video_docs:
+                        db.videos.insert_many(video_docs)
+
+            except Exception as e:
+                print(f"Could not send background video search result: {e}")
+
+    except Exception as e:
+        print(f"Error in background video search task: {e}")
+
+async def run_chunk_simulation_background(websocket: WebSocket, simulation_service: SimulationService, chunk_text: str, lecture_id: str, chunk_id: str, previous_context: str):
+    # Send pending state immediately to UI
+    try:
+        await websocket.send_json({
+            "type": "pipeline_result",
+            "lecture_id": lecture_id,
+            "results": {
+                "concepts": [],
+                "videos": [],
+                "simulations": [{
+                    "chunk_id": chunk_id,
+                    "concept": "Analyzing...",
+                    "concept_id": f"sim_chunk_{chunk_id}",
+                    "status": "pending",
+                    "description": "Identifying key concept for simulation..."
+                }],
+                "quizzes": [],
+                "flashcards": []
+            }
+        })
+    except Exception as e:
+        print(f"Could not send initial pending status for chunk {chunk_id}: {e}")
+
+    try:
+        print(f"DEBUG: Starting background chunk simulation for chunk {chunk_id}.")
+        result = await simulation_service.generate_simulation_from_chunk(
+            chunk_text=chunk_text,
+            context=previous_context
+        )
+        
+        if result:
+            print(f"DEBUG: Chunk simulation completed for concept: {result['concept']}")
+            
+            # Construct simulation object
+            sim_obj = {
+                "concept": result["concept"],
+                "concept_id": f"sim_chunk_{chunk_id}", 
+                "chunk_id": chunk_id,
+                "description": result["description"],
+                "code": result["code"],
+                "status": "ready"
+            }
+            
+            # Send to client
+            try:
+                await websocket.send_json({
+                    "type": "pipeline_result",
+                    "lecture_id": lecture_id,
+                    "results": {
+                        "concepts": [],
+                        "videos": [],
+                        "simulations": [sim_obj],
+                        "quizzes": [],
+                        "flashcards": []
+                    }
+                })
+
+                # Persist
+                if db is not None:
+                    sim_doc = sim_obj.copy()
+                    sim_doc["lecture_id"] = lecture_id
+                    sim_doc["timestamp"] = time.time()
+                    sim_doc["origin"] = "chunk_auto"
+                    db.simulations.insert_one(sim_doc)
+
+            except Exception as e:
+                print(f"Could not send background chunk simulation result: {e}")
+        else:
+             print("DEBUG: Chunk simulation returned None (possibly no concept found)")
+
+    except Exception as e:
+        print(f"Error in background chunk simulation task: {e}")
+
+
+async def process_transcript_message(websocket: WebSocket, message: dict):
+    text = message.get("text", "")
+    previous_context = message.get("previous_context", "")
+    lecture_id = message.get("lecture_id", "default_lecture")
+    chunk_id = message.get("chunk_id", f"chunk_{int(time.time()*1000)}")
+    is_final = message.get("is_final", False)
+    
+    # Enhance context with last 4 chunks from DB for better simulation/pipeline decisions
+    if db is not None and lecture_id:
+        try:
+            # Fetch last 4 transcripts (excluding the current one which isn't saved yet)
+            last_4_cursor = db.transcripts.find(
+                {"lecture_id": lecture_id},
+                {"text": 1, "_id": 0}
+            ).sort("timestamp", -1).limit(4)
+            last_4 = list(last_4_cursor)
+            if last_4:
+                # Reverse to maintain chronological order in context string
+                rich_context = "\n".join([t["text"] for t in reversed(last_4)])
+                previous_context = rich_context
+        except Exception as e:
+            print(f"Error fetching rich context from DB: {e}")
+
+    if text or is_final:
+        # Trigger immediate chunk-based simulation (latency hiding)
+        if text and not is_final:
+             asyncio.create_task(run_chunk_simulation_background(
+                websocket,
+                simulation_service,
+                text,
+                lecture_id,
+                chunk_id,
+                previous_context
+             ))
+
+        # Get existing concepts for this lecture
+        existing_concepts_map = {c.keyword: c.id for c in CONCEPTS.get(lecture_id, [])}
+        
+        # Run the pipeline (now returns concepts immediately, simulations are pending)
+        result = await pipeline_service.process_chunk(text, previous_context, lecture_id, existing_concepts_map)
+        
+        # Logic: If this is the final commit, check if we have any quizzes.
+        # If not, force one.
+        if is_final:
+            if not QUIZZES.get(lecture_id):
+                print(f"DEBUG: Final commit received and no quizzes found for {lecture_id}. Forcing a summary quiz.")
+                # Create a summary quiz request
+                topic = "Lecture Summary"
+                if CONCEPTS.get(lecture_id):
+                    topic = f"Review of {', '.join([c.keyword for c in CONCEPTS[lecture_id][:3]])}"
+                
+                quiz_id = f"quiz_final_{int(time.time()*1000)}"
+                forced_quiz = {
+                    "id": quiz_id,
+                    "topic": topic,
+                    "status": "pending",
+                    "questions": []
+                }
+                result.setdefault("quizzes", []).append(forced_quiz)
+
+        # Send back the initial results
+        try:
+            await websocket.send_json({
+                "type": "pipeline_result",
+                "lecture_id": lecture_id,
+                "results": {
+                    "concepts": result.get("concepts", []),
+                    "videos": [], # Video requests handled separately
+                    "simulations": result.get("simulations", []),
+                    "quizzes": result.get("quizzes", []),
+                    "flashcards": result.get("flashcards", [])
+                }
+            })
+        except Exception as e:
+            print(f"Error sending initial pipeline results: {e}")
+            return
+
+        # Handle background simulation generation
+        for sim in result.get("simulations", []):
+            if sim.get("status") == "pending":
+                asyncio.create_task(run_simulation_background(
+                    websocket, 
+                    simulation_service, 
+                    sim, 
+                    lecture_id, 
+                    previous_context, 
+                    text
+                ))
+        
+        # Handle background quiz generation
+        for quiz in result.get("quizzes", []):
+            if quiz.get("status") == "pending":
+                QUIZZES.setdefault(lecture_id, []).append(quiz)
+                asyncio.create_task(run_quiz_background(
+                    websocket,
+                    quiz_service,
+                    quiz,
+                    lecture_id,
+                    previous_context,
+                    text
+                ))
+        
+        # Handle background flashcard generation
+        for fc in result.get("flashcards", []):
+            if fc.get("status") == "pending":
+                asyncio.create_task(run_flashcard_background(
+                    websocket,
+                    quiz_service,
+                    fc,
+                    lecture_id,
+                    previous_context,
+                    text
+                ))
+
+        # Handle background video search
+        for vr in result.get("video_requests", []):
+            asyncio.create_task(run_video_search_background(
+                websocket,
+                youtube_client,
+                vr,
+                lecture_id
+            ))
+        
+        # Also update local store if needed (e.g., CONCEPTS)
+        # Persist transcripts
+        if db is not None:
+            # Deduplication check: see if chunk_id already exists for this lecture
+            existing_transcript = db.transcripts.find_one({"lecture_id": lecture_id, "chunk_id": message.get("chunk_id")})
+            if existing_transcript:
+                print(f"DEBUG: Skipping duplicate transcript chunk persistence: {message.get('chunk_id')}")
+            else:
+                transcript_doc = {
+                    "lecture_id": lecture_id,
+                    "chunk_id": message.get("chunk_id"), # Use message.get("chunk_id")
+                    "text": text, # Use the 'text' variable already defined
+                    "time": time.strftime("%H:%M:%S"), # Approximate server time, ideally client sends it
+                    "type": "committed",
+                    "timestamp": time.time()
+                }
+                db.transcripts.insert_one(transcript_doc)
+
+        new_concepts_data = result.get("concepts", [])
+        if new_concepts_data:
+            new_concepts_objs = [
+                Concept(
+                    id=c["id"],
+                    keyword=c["keyword"], 
+                    definition=c.get("definition"),
+                    stem_concept=c["stem_concept"], 
+                    source_chunk_id=message.get("chunk_id")
+                ) 
+                for c in new_concepts_data
+            ]
+            CONCEPTS.setdefault(lecture_id, []).extend(new_concepts_objs)
+        
+            # Persist concepts
+            if db is not None:
+                concept_docs = []
+                for c in new_concepts_data:
+                    c_doc = c.copy()
+                    c_doc["lecture_id"] = lecture_id
+                    c_doc["timestamp"] = time.time()
+                    concept_docs.append(c_doc)
+                if concept_docs:
+                    db.concepts.insert_many(concept_docs)
+        
+        # Persist simulation requests (pending state)
+        new_sims = result.get("simulations", [])
+        if new_sims and db is not None:
+            sim_docs = []
+            for s in new_sims:
+                s_doc = s.copy()
+                s_doc["lecture_id"] = lecture_id
+                s_doc["status"] = "pending" # Initial state
+                s_doc["timestamp"] = time.time()
+                sim_docs.append(s_doc)
+            if sim_docs:
+                db.simulations.insert_many(sim_docs)
+
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await websocket.accept()
@@ -211,136 +553,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 msg_type = message.get("type")
                 
                 if msg_type == "transcript_commit":
-                    # Process the committed transcript
-                    text = message.get("text", "")
-                    previous_context = message.get("previous_context", "")
-                    lecture_id = message.get("lecture_id", "default_lecture")
-                    is_final = message.get("is_final", False)
-                    
-                    if text or is_final:
-                        # Get existing concepts for this lecture
-                        existing_concepts_map = {c.keyword: c.id for c in CONCEPTS.get(lecture_id, [])}
-                        
-                        # Run the pipeline (now returns concepts immediately, simulations are pending)
-                        result = await pipeline_service.process_chunk(text, previous_context, lecture_id, existing_concepts_map)
-                        
-                        # Logic: If this is the final commit, check if we have any quizzes.
-                        # If not, force one.
-                        if is_final:
-                            if not QUIZZES.get(lecture_id):
-                                print(f"DEBUG: Final commit received and no quizzes found for {lecture_id}. Forcing a summary quiz.")
-                                # Create a summary quiz request
-                                topic = "Lecture Summary"
-                                if CONCEPTS.get(lecture_id):
-                                    topic = f"Review of {', '.join([c.keyword for c in CONCEPTS[lecture_id][:3]])}"
-                                
-                                quiz_id = f"quiz_final_{int(time.time()*1000)}"
-                                forced_quiz = {
-                                    "id": quiz_id,
-                                    "topic": topic,
-                                    "status": "pending",
-                                    "questions": []
-                                }
-                                result.setdefault("quizzes", []).append(forced_quiz)
-
-                        # Send back the initial results
-                        try:
-                            await websocket.send_json({
-                                "type": "pipeline_result",
-                                "lecture_id": lecture_id,
-                                "results": result
-                            })
-                        except Exception as e:
-                            print(f"Error sending initial pipeline results: {e}")
-                            continue
-
-                        # Handle background simulation generation
-                        for sim in result.get("simulations", []):
-                            if sim.get("status") == "pending":
-                                asyncio.create_task(run_simulation_background(
-                                    websocket, 
-                                    simulation_service, 
-                                    sim, 
-                                    lecture_id, 
-                                    previous_context, 
-                                    text
-                                ))
-                        
-                        # Handle background quiz generation
-                        for quiz in result.get("quizzes", []):
-                            if quiz.get("status") == "pending":
-                                QUIZZES.setdefault(lecture_id, []).append(quiz)
-                                asyncio.create_task(run_quiz_background(
-                                    websocket,
-                                    quiz_service,
-                                    quiz,
-                                    lecture_id,
-                                    previous_context,
-                                    text
-                                ))
-                        
-                        # Also update local store if needed (e.g., CONCEPTS)
-                        # Persist transcripts
-                        if db is not None:
-                            transcript_doc = {
-                                "lecture_id": lecture_id,
-                                "chunk_id": message.get("chunk_id"), # Use message.get("chunk_id")
-                                "text": text, # Use the 'text' variable already defined
-                                "time": time.strftime("%H:%M:%S"), # Approximate server time, ideally client sends it
-                                "type": "committed",
-                                "timestamp": time.time()
-                            }
-                            db.transcripts.insert_one(transcript_doc)
-
-                        new_concepts_data = result.get("concepts", [])
-                        if new_concepts_data:
-                            new_concepts_objs = [
-                                Concept(
-                                    id=c["id"],
-                                    keyword=c["keyword"], 
-                                    definition=c.get("definition"),
-                                    stem_concept=c["stem_concept"], 
-                                    source_chunk_id=message.get("chunk_id")
-                                ) 
-                                for c in new_concepts_data
-                            ]
-                            CONCEPTS.setdefault(lecture_id, []).extend(new_concepts_objs)
-                        
-                            # Persist concepts
-                            if db is not None:
-                                concept_docs = []
-                                for c in new_concepts_data:
-                                    c_doc = c.copy()
-                                    c_doc["lecture_id"] = lecture_id
-                                    c_doc["timestamp"] = time.time()
-                                    concept_docs.append(c_doc)
-                                if concept_docs:
-                                    db.concepts.insert_many(concept_docs)
-                        
-                        # Persist video results
-                        new_videos = result.get("videos", [])
-                        if new_videos and db is not None:
-                            video_docs = []
-                            for v in new_videos:
-                                v_doc = v.copy()
-                                v_doc["lecture_id"] = lecture_id
-                                v_doc["timestamp"] = time.time()
-                                video_docs.append(v_doc)
-                            if video_docs:
-                                db.videos.insert_many(video_docs)
-
-                        # Persist simulation requests (pending state)
-                        new_sims = result.get("simulations", [])
-                        if new_sims and db is not None:
-                            sim_docs = []
-                            for s in new_sims:
-                                s_doc = s.copy()
-                                s_doc["lecture_id"] = lecture_id
-                                s_doc["status"] = "pending" # Initial state
-                                s_doc["timestamp"] = time.time()
-                                sim_docs.append(s_doc)
-                            if sim_docs:
-                                db.simulations.insert_many(sim_docs)
+                    # Process the committed transcript in background
+                    asyncio.create_task(process_transcript_message(websocket, message))
 
             except json.JSONDecodeError:
                 pass

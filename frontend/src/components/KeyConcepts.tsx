@@ -14,6 +14,7 @@ export interface Flashcard {
     concept_id: string | null;
     front: string;
     back: string;
+    status?: 'pending' | 'ready';
 }
 
 export interface Question {
@@ -300,6 +301,26 @@ function QuizItem({ quiz }: { quiz: Quiz }) {
 function FlashcardItem({ card }: { card: Flashcard }) {
     const [isFlipped, setIsFlipped] = useState(false);
 
+    if (card.status === 'pending') {
+        return (
+            <div className="h-40 w-full rounded-2xl border border-white/5 bg-white/5 p-6 flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite] shadow-2xl"></div>
+                <div className="w-10 h-10 rounded-full bg-fuchsia-500/10 flex items-center justify-center mb-1">
+                    <span className="material-symbols-outlined text-fuchsia-500/50 animate-spin text-xl">sync</span>
+                </div>
+                <p className="text-[10px] uppercase tracking-widest text-fuchsia-400/50 font-bold">Generating Card</p>
+                <div className="h-2 w-24 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                        initial={{ x: "-100%" }}
+                        animate={{ x: "100%" }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        className="h-full w-full bg-fuchsia-500/30"
+                    />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div 
             onClick={() => setIsFlipped(!isFlipped)}
@@ -310,10 +331,9 @@ function FlashcardItem({ card }: { card: Flashcard }) {
                 animate={{ rotateY: isFlipped ? 180 : 0 }}
                 transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
                 className="w-full h-full relative preserve-3d"
-                style={{ transformStyle: 'preserve-3d' }}
             >
                 {/* Front */}
-                <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg group-hover:border-fuchsia-500/30 transition-colors">
+                <div className="absolute inset-0 backface-hidden bg-[#1A1A1A] border border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-xl group-hover:border-fuchsia-500/30 transition-colors z-20">
                     <span className="text-[10px] uppercase tracking-wider text-fuchsia-400 font-bold mb-2">Question</span>
                     <p className="text-white font-medium text-sm">{card.front}</p>
                     <span className="absolute bottom-4 text-[10px] text-gray-500 flex items-center gap-1">
@@ -323,7 +343,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
 
                 {/* Back */}
                 <div 
-                    className="absolute inset-0 backface-hidden bg-gradient-to-br from-fuchsia-600/20 to-violet-600/20 border border-fuchsia-500/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg"
+                    className="absolute inset-0 backface-hidden bg-[#241b2e] border border-fuchsia-500/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-xl"
                     style={{ transform: 'rotateY(180deg)' }}
                 >
                     <span className="text-[10px] uppercase tracking-wider text-violet-400 font-bold mb-2">Answer</span>

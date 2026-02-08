@@ -11,10 +11,9 @@ Your goal is to enhance the learning experience by extracting key concepts and, 
 3.  **GENERATE_SIMULATION**: Request an interactive simulation for concepts that are visual, dynamic, spatial, or involve a step-by-step process.
     *   `concept`: The concept to simulate.
     *   `description`: A detailed description of the visual goal (e.g., "A 3D visualization of an atom with electrons orbiting", "A draggable slider showing how frequency changes wave wavelength", "A step-by-step animation of a merge sort").
-4.  **CREATE_FLASHCARD**: Create a flashcard for key terms, definitions, or core principles.
-    *   `front`: The question or term on the front of the card.
-    *   `back`: The answer or definition on the back.
-    *   `concept`: (Optional) The concept this flashcard relates to.
+4.  **CREATE_FLASHCARD**: Request a flashcard for key terms, definitions, or core principles.
+    *   `concept`: The concept or term this flashcard relates to.
+    *   `topic`: A brief description of what the flashcard should cover (e.g., "The definition of torque", "How BFS uses a queue").
 5.  **GENERATE_QUIZ**: Request a short quiz (3-4 questions) for a major topic or section summary. USE SPARINGLY.
     *   `topic`: The main topic for the quiz.
     *   `concept`: (Optional) The specific concept ID this quiz relates to.
@@ -44,7 +43,7 @@ Your goal is to enhance the learning experience by extracting key concepts and, 
     },
     {
       "type": "CREATE_FLASHCARD",
-      "payload": { "front": "...", "back": "...", "concept": "..." }
+      "payload": { "concept": "...", "topic": "..." }
     },
     {
       "type": "GENERATE_QUIZ",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unified Start Script for LearnStream
+# Unified Start Script for Interactable
 
 # Get the root directory (where this script is located)
 ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"

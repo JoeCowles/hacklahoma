@@ -82,11 +82,12 @@ class PipelineService:
                     else:
                         context_id = f"ref_{int(time.time()*1000)}"
                     
-                    video_results = self.youtube.search(query, limit=2)
-                    for v in video_results:
-                        v["context_concept"] = context_concept
-                        v["context_concept_id"] = context_id
-                        results["videos"].append(v)
+                    # Store request for background processing
+                    results.setdefault("video_requests", []).append({
+                        "query": query,
+                        "context_concept": context_concept,
+                        "context_concept_id": context_id
+                    })
 
             elif a_type == "GENERATE_SIMULATION":
                 concept = payload.get("concept")
@@ -116,25 +117,26 @@ class PipelineService:
                     })
 
             elif a_type == "CREATE_FLASHCARD":
-                front = payload.get("front")
-                back = payload.get("back")
-                concept = payload.get("concept") # Optional linking
-                if front and back:
+                concept = payload.get("concept")
+                topic = payload.get("topic")
+                if concept:
                     # Try to link to concept
                     concept_id = None
-                    if concept:
-                        matching_concept = next((c for c in results["concepts"] if c["keyword"].lower() == concept.lower()), None)
-                        if matching_concept:
-                            concept_id = matching_concept["id"]
-                        elif existing_concepts and concept in existing_concepts:
-                            concept_id = existing_concepts[concept]
+                    matching_concept = next((c for c in results["concepts"] if c["keyword"].lower() == concept.lower()), None)
+                    if matching_concept:
+                        concept_id = matching_concept["id"]
+                    elif existing_concepts and concept in existing_concepts:
+                        concept_id = existing_concepts[concept]
                     
                     flashcard_id = f"fc_{int(time.time()*1000)}_{len(results['flashcards'])}"
                     results["flashcards"].append({
                         "id": flashcard_id,
+                        "concept": concept,
+                        "topic": topic,
                         "concept_id": concept_id,
-                        "front": front,
-                        "back": back
+                        "status": "pending",
+                        "front": None,
+                        "back": None
                     })
 
             elif a_type == "GENERATE_QUIZ":
@@ -161,8 +163,8 @@ class PipelineService:
         # Fallback: Ensure every concept extracted has a corresponding simulation (now also pending) and video search
         extracted_keywords = [c["keyword"] for c in results["concepts"]]
         simulated_keywords = [s["concept"] for s in results["simulations"]]
-        video_context_keywords = [v.get("context_concept") for v in results["videos"]]
-        # We won't force flashcards in fallback to avoid noise, but could if desired.
+        video_request_keywords = [v.get("context_concept") for v in results.get("video_requests", [])]
+        flashcard_keywords = [f.get("concept") for f in results["flashcards"]]
         
         for concept_obj in results["concepts"]:
             # Fallback for simulations
@@ -176,12 +178,25 @@ class PipelineService:
                 })
             
             # Fallback for videos
-            if concept_obj["keyword"] not in video_context_keywords:
+            if concept_obj["keyword"] not in video_request_keywords:
                 print(f"DEBUG: Fallback - Triggering mandatory video search for '{concept_obj['keyword']}'")
-                video_results = self.youtube.search(concept_obj["keyword"], limit=2)
-                for v in video_results:
-                    v["context_concept"] = concept_obj["keyword"]
-                    v["context_concept_id"] = concept_obj["id"]
-                    results["videos"].append(v)
+                results.setdefault("video_requests", []).append({
+                    "query": concept_obj["keyword"],
+                    "context_concept": concept_obj["keyword"],
+                    "context_concept_id": concept_obj["id"]
+                })
+            
+            # Fallback for flashcards
+            if concept_obj["keyword"] not in flashcard_keywords:
+                flashcard_id = f"fc_{int(time.time()*1000)}_{len(results['flashcards'])}"
+                results["flashcards"].append({
+                    "id": flashcard_id,
+                    "concept": concept_obj["keyword"],
+                    "concept_id": concept_obj["id"],
+                    "topic": f"Definition and key points of {concept_obj['keyword']}",
+                    "status": "pending",
+                    "front": None,
+                    "back": None
+                })
 
         return results

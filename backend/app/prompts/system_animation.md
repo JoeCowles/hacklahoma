@@ -43,5 +43,6 @@ accessibility.
 # Output
 
 Your response should be a single Markdown code block containing the entire HTML
-file.
+file. It is IMPERATIVE that the content in the simulation or visualization
+is fully visible: dynamically scale the view bounds of the camera to make it so if needed.
 

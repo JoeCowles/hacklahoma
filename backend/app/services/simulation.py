@@ -13,6 +13,7 @@ class SimulationService:
         self.gemini = gemini_client
         self.system_prompt = load_prompt("system_animation")
         self.user_template = load_prompt("simulation_user")
+        self.chunk_template = load_prompt("simulation_from_chunk")
 
     async def generate_simulation(self, concept: str, description: str, context: str) -> str:
         """
@@ -58,3 +59,56 @@ class SimulationService:
             return response_text.strip()
             
         return response_text 
+
+    async def generate_simulation_from_chunk(self, chunk_text: str, context: str) -> dict | None:
+        """
+        Generates a simulation directly from a chunk of text.
+        Returns dict with keys: concept, description, code.
+        """
+        prompt = (
+            self.chunk_template
+            .replace("{{transcript_chunk}}", chunk_text)
+            .replace("{{context}}", context)
+        )
+        
+        try:
+            response_text = await self.gemini.generate_text_async(prompt)
+        except Exception as e:
+            print(f"Chunk Simulation Generation Error: {e}")
+            return None
+
+        # Parse the custom format
+        # CONCEPT: ...
+        # DESCRIPTION: ...
+        # CODE_START
+        # ...
+        # CODE_END
+        
+        try:
+            concept_match = re.search(r"CONCEPT:\s*(.*?)(?:\n|$)", response_text, re.IGNORECASE)
+            desc_match = re.search(r"DESCRIPTION:\s*(.*?)(?:\n|$)", response_text, re.IGNORECASE)
+            code_match = re.search(r"CODE_START\s*(.*?)\s*CODE_END", response_text, re.DOTALL)
+            
+            if not code_match:
+                 # Fallback: maybe it just outputted the code or wrapped in markdown?
+                 # But we asked strictly. Let's try to salvage code if possible.
+                 match_html = re.search(r"```html\s*(.*?)```", response_text, re.DOTALL | re.IGNORECASE)
+                 if match_html:
+                     code = match_html.group(1).strip()
+                 else:
+                     return None
+            else:
+                code = code_match.group(1).strip()
+
+            concept = concept_match.group(1).strip() if concept_match else "Auto-Generated Concept"
+            description = desc_match.group(1).strip() if desc_match else "Simulation generated from transcript."
+            
+            return {
+                "concept": concept,
+                "description": description,
+                "code": code
+            }
+
+        except Exception as e:
+            print(f"Error parsing chunk simulation response: {e}")
+            return None
