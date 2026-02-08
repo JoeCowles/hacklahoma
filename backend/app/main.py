@@ -232,17 +232,13 @@ async def run_simulation_background(websocket: WebSocket, simulation_service: Si
         concept = sim_request["concept"]
         print(f"DEBUG: Starting background simulation for {concept}")
         
-        # Check Cache first
-        cached = await simulation_service.get_cached_simulation(db, concept)
-        if cached:
-            code = cached["code"]
-            print(f"DEBUG: Using cached simulation for {concept}")
-        else:
-            code = await simulation_service.generate_simulation(
-                concept=concept,
-                description=sim_request["description"],
-                context=f"{previous_context}\n\nRecent Transcript: {text}"
-            )
+        # Invisibility: generate_simulation handles cache internally
+        code = await simulation_service.generate_simulation(
+            db=db,
+            concept=concept,
+            description=sim_request["description"],
+            context=f"{previous_context}\n\nRecent Transcript: {text}"
+        )
         
         # Send update to client
         try:
@@ -466,19 +462,16 @@ async def run_chunk_simulation_background(websocket: WebSocket, simulation_servi
 
     try:
         print(f"DEBUG: Starting background chunk simulation for chunk {chunk_id}.")
+        
+        # Invisibility: generate_simulation_from_chunk handles cache internally
         result = await simulation_service.generate_simulation_from_chunk(
+            db=db,
             chunk_text=chunk_text,
             context=previous_context
         )
         
         if result:
             concept = result["concept"]
-            # Try to see if this concept (now that we found it) is in cache
-            cached = await simulation_service.get_cached_simulation(db, concept)
-            if cached:
-                print(f"DEBUG: Found cached version for extracted chunk concept: {concept}")
-                result["code"] = cached["code"]
-
             print(f"DEBUG: Chunk simulation completed for concept: {concept}")
             
             # Construct simulation object
@@ -833,22 +826,13 @@ async def generate_animation(payload: AnimationRequest) -> AnimationResponse:
     if not settings.gemini_api_key:
         raise HTTPException(status_code=500, detail="Gemini API key is not configured")
 
-    # Check Cache first
-    cached = await simulation_service.get_cached_simulation(db, payload.concept)
-    if cached:
-        return AnimationResponse(concept=payload.concept, status="ready", asset_url=None, code=cached["code"])
-
-    # For on-demand, we might not have full context
-    context = f"Manual request for animation on: {payload.concept}"
-    
-    try:
-        code = await simulation_service.generate_simulation(
-            concept=payload.concept,
-            description=f"Interactive simulation of {payload.concept}",
-            context=context
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Simulation error: {exc}") from exc
+    # Invisibility: generate_simulation handles cache internally
+    code = await simulation_service.generate_simulation(
+        db=db,
+        concept=payload.concept,
+        description=f"Interactive simulation of {payload.concept}",
+        context=f"Manual request for animation on: {payload.concept}"
+    )
 
     if not code:
         raise HTTPException(status_code=502, detail="Gemini returned empty code")

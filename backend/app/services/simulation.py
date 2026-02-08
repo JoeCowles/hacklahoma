@@ -18,23 +18,23 @@ class SimulationService:
     async def get_cached_simulation(self, db, concept: str) -> dict | None:
         """
         Tries to find a similar simulation in the cache using Atlas Search (Lucene).
-        This does NOT require Gemini embeddings.
+        MongoDB Atlas handles the text search natively without needing external embeddings.
         """
         if db is None:
             return None
             
         try:
             # Native MongoDB Atlas Search (Lucene-based)
-            # Increased leniency: maxEdits: 2 allows for more variations/typos
+            # More cautious: maxEdits: 1 allows for minor typos only
             pipeline = [
                 {
                     "$search": {
-                        "index": "default",
+                        "index": "simulation_cache_concepts",
                         "text": {
                             "query": concept,
                             "path": "concept",
                             "fuzzy": {
-                                "maxEdits": 2,
+                                "maxEdits": 1,
                                 "prefixLength": 0
                             }
                         }
@@ -48,17 +48,25 @@ class SimulationService:
             results = list(db.simulation_cache.aggregate(pipeline))
             if results:
                 res = results[0]
-                print(f"DEBUG: Atlas Search cache hit for concept '{concept}' -> using cached simulation for '{res.get('concept')}'")
+                # Optional: We could add a score threshold check here if needed
                 return {
                     "concept": res.get("concept"),
                     "description": res.get("description"),
                     "code": res.get("code")
                 }
-        except Exception as e:
-            # Fallback to broader match if Atlas Search index is not configured yet
-            print(f"DEBUG: Atlas Search not available or failed, trying broader match: {e}")
-            # Try case-insensitive substring match for more leniency
-            res = db.simulation_cache.find_one({"concept": {"$regex": concept, "$options": "i"}})
+            else:
+                # Try strict regex fallback if Atlas Search index didn't match
+                # Anchored match (^ and $) for caution
+                res = db.simulation_cache.find_one({"concept": {"$regex": f"^{re.escape(concept)}$", "$options": "i"}})
+                if res:
+                    return {
+                        "concept": res.get("concept"),
+                        "description": res.get("description"),
+                        "code": res.get("code")
+                    }
+        except Exception:
+            # Fallback to strict exact match
+            res = db.simulation_cache.find_one({"concept": {"$regex": f"^{re.escape(concept)}$", "$options": "i"}})
             if res:
                 return {
                     "concept": res.get("concept"),
@@ -70,7 +78,8 @@ class SimulationService:
 
     async def cache_simulation(self, db, concept: str, description: str, code: str):
         """
-        Caches a simulation. Indexed by concept for Atlas Search.
+        Caches a simulation. MongoDB Atlas Vector Search index will automatically
+        generate the embedding for the document based on its configuration.
         """
         if db is None:
             return
@@ -92,11 +101,16 @@ class SimulationService:
         except Exception as e:
             print(f"Error caching simulation: {e}")
 
-    async def generate_simulation(self, concept: str, description: str, context: str) -> str:
+    async def generate_simulation(self, db, concept: str, description: str, context: str) -> str:
         """
-        Generates a self-contained HTML/ThreeJS simulation for the given concept.
-        Returns the raw HTML code.
+        Generates a self-contained HTML/ThreeJS simulation.
+        Checks global cache first (invisible to caller).
         """
+        # INVISIBLE CACHE CHECK
+        cached = await self.get_cached_simulation(db, concept)
+        if cached:
+            return cached["code"]
+
         user_prompt = (
             self.user_template
             .replace("{{concept}}", concept)
@@ -114,33 +128,28 @@ class SimulationService:
         try:
             response_text = await self.gemini.generate_text_async(full_prompt)
             print(f"DEBUG: Simulation raw response length: {len(response_text)}")
-            if len(response_text) < 100:
-                print(f"DEBUG: Short response: {response_text}")
         except Exception as e:
             print(f"Simulation Generation Error: {e}")
             return f"<!-- Error generating simulation: {str(e)} -->"
         
         # Clean up response (extract code block)
-        # Look for ```html ... ```
         match = re.search(r"```html\s*(.*?)```", response_text, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
         
-        # Fallback if wrapped in generic block
         match_generic = re.search(r"```\s*(.*?)```", response_text, re.DOTALL)
         if match_generic:
             return match_generic.group(1).strip()
             
-        # Fallback: assume the whole text is code if it starts with <
         if response_text.strip().startswith("<"):
             return response_text.strip()
             
         return response_text 
 
-    async def generate_simulation_from_chunk(self, chunk_text: str, context: str) -> dict | None:
+    async def generate_simulation_from_chunk(self, db, chunk_text: str, context: str) -> dict | None:
         """
         Generates a simulation directly from a chunk of text.
-        Returns dict with keys: concept, description, code.
+        Checks cache if a concept is identified.
         """
         prompt = (
             self.chunk_template
@@ -154,21 +163,19 @@ class SimulationService:
             print(f"Chunk Simulation Generation Error: {e}")
             return None
 
-        # Parse the custom format
-        # CONCEPT: ...
-        # DESCRIPTION: ...
-        # CODE_START
-        # ...
-        # CODE_END
-        
         try:
             concept_match = re.search(r"CONCEPT:\s*(.*?)(?:\n|$)", response_text, re.IGNORECASE)
             desc_match = re.search(r"DESCRIPTION:\s*(.*?)(?:\n|$)", response_text, re.IGNORECASE)
-            code_match = re.search(r"CODE_START\s*(.*?)\s*CODE_END", response_text, re.DOTALL)
             
+            concept = concept_match.group(1).strip() if concept_match else "Auto-Generated Concept"
+            
+            # INVISIBLE CACHE CHECK
+            cached = await self.get_cached_simulation(db, concept)
+            if cached:
+                return cached
+
+            code_match = re.search(r"CODE_START\s*(.*?)\s*CODE_END", response_text, re.DOTALL)
             if not code_match:
-                 # Fallback: maybe it just outputted the code or wrapped in markdown?
-                 # But we asked strictly. Let's try to salvage code if possible.
                  match_html = re.search(r"```html\s*(.*?)```", response_text, re.DOTALL | re.IGNORECASE)
                  if match_html:
                      code = match_html.group(1).strip()
@@ -177,7 +184,6 @@ class SimulationService:
             else:
                 code = code_match.group(1).strip()
 
-            concept = concept_match.group(1).strip() if concept_match else "Auto-Generated Concept"
             description = desc_match.group(1).strip() if desc_match else "Simulation generated from transcript."
             
             return {

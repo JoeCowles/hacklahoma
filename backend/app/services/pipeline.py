@@ -61,7 +61,6 @@ class PipelineService:
                 if keyword:
                     # Basic determination of STEM vs not (simplified)
                     stem = True 
-                    import time
                     unique_id = f"concept_{lecture_id}_{int(time.time()*1000)}_{len(results['concepts'])}"
                     results["concepts"].append({
                         "id": unique_id,
