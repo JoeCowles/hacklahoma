@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str | None = None
     elevenlabs_tts_model_id: str = "eleven_multilingual_v2"
     vector_db_url: str | None = None
+    mongo_connection_string: str | None = None
     credit_start_balance: int = 50
 
 

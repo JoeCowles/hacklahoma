@@ -1,6 +1,7 @@
 "use client";
 
 import { TranscriptionItem } from "../hooks/useRealtimeTranscription";
+import { Concept } from "./KeyConcepts";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 import clsx from "clsx";
@@ -16,9 +17,11 @@ interface TranscriptionCardProps {
   error: string | null;
   startRecording: () => void;
   stopRecording: () => void;
+  concepts: Concept[];
+  onConceptClick: (concept: Concept) => void;
 }
 
-export function TranscriptionCard({ isRecording, transcripts, error, startRecording, stopRecording }: TranscriptionCardProps) {
+export function TranscriptionCard({ isRecording, transcripts, error, startRecording, stopRecording, concepts, onConceptClick }: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<{ text: string, x: number, y: number } | null>(null);
@@ -105,7 +108,7 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
           )}
         </AnimatePresence>
 
-        <TranscriptList transcripts={transcripts} />
+        <TranscriptList transcripts={transcripts} concepts={concepts} onConceptClick={onConceptClick} />
         <div ref={listEndRef} />
       </div>
 
@@ -150,7 +153,7 @@ export function TranscriptionCard({ isRecording, transcripts, error, startRecord
                     <span className="material-symbols-outlined text-sm">close</span>
                   </button>
                 </div>
-                <div className="w-[350px] h-[300px] bg-white rounded-lg overflow-hidden border border-gray-100">
+                <div className="w-[600px] h-[450px] bg-white rounded-lg overflow-hidden border border-gray-100">
                   <iframe
                     srcDoc={simulationCode}
                     className="w-full h-full border-none"
@@ -223,12 +226,12 @@ function TranscriptionHeader({
   );
 }
 
-function TranscriptList({ transcripts }: { transcripts: TranscriptionItem[] }) {
+function TranscriptList({ transcripts, concepts, onConceptClick }: { transcripts: TranscriptionItem[], concepts: Concept[], onConceptClick: (concept: Concept) => void }) {
   return (
     <div className="space-y-8">
       <AnimatePresence initial={false}>
         {transcripts.map((item, index) => (
-          <TranscriptItem key={`${item.time}-${index}`} item={item} />
+          <TranscriptItem key={`${item.time}-${index}`} item={item} concepts={concepts} onConceptClick={onConceptClick} />
         ))}
         {transcripts.length === 0 && (
           <motion.div
@@ -247,21 +250,58 @@ function TranscriptList({ transcripts }: { transcripts: TranscriptionItem[] }) {
   );
 }
 
-function TranscriptItem({ item }: { item: TranscriptionItem }) {
+function TranscriptItem({ item, concepts, onConceptClick }: { item: TranscriptionItem, concepts: Concept[], onConceptClick: (concept: Concept) => void }) {
+  // Helper to highlight concepts in text
+  const renderTextWithHighlights = (text: string) => {
+    if (!concepts.length) return text;
+
+    // Create a map for quick lookup and extraction of keywords
+    // Sort keywords by length (descending) to ensure longer phrases are matched first
+    const keywords = concepts
+      .filter(c => c.keyword)
+      .sort((a, b) => b.keyword.length - a.keyword.length);
+
+    if (keywords.length === 0) return text;
+
+    // Create Regex pattern
+    const pattern = new RegExp(`(${keywords.map(c => c.keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+
+    const parts = text.split(pattern);
+
+    return parts.map((part, i) => {
+      const match = keywords.find(c => c.keyword.toLowerCase() === part.toLowerCase());
+      if (match) {
+        return (
+          <span
+            key={i}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent potentially triggering other click handlers
+              onConceptClick(match);
+            }}
+            className="text-violet-400 font-medium cursor-pointer hover:text-violet-300 hover:underline decoration-violet-500/50 underline-offset-4 transition-all"
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className="flex gap-8 group"
     >
-      <span className="text-xs font-mono text-primary/80 font-semibold pt-2 shrink-0 w-20 text-right group-hover:text-primary transition-colors">
+      <span className="text-xs font-mono text-gray-400 font-semibold pt-2 shrink-0 w-20 text-right group-hover:text-white transition-colors">
         {item.time}
       </span>
       <p className={cn(
         "text-xl leading-relaxed text-gray-200 font-light",
         item.type === 'partial' && "opacity-70 italic animate-pulse text-gray-400"
       )}>
-        {item.text}
+        {renderTextWithHighlights(item.text)}
       </p>
     </motion.div>
   );
