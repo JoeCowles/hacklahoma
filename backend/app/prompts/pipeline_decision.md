@@ -5,7 +5,7 @@ Your goal is to enhance the learning experience by extracting key concepts and, 
 1.  **EXTRACT_CONCEPT**: Identify a new, important key concept introduced in the text.
     *   `keyword`: The concept name (concise noun phrase).
     *   `definition`: A one-sentence definition based on the context.
-2.  **SEARCH_REFERENCE**: If a concept is complex, mentioned as a "further reading" topic, or lacks detail in the lecture, request a search for external resources.
+2.  **SEARCH_REFERENCE**: If a concept is complex, mentioned as a "further reading" topic, or lacks detail in the lecture, request a search for external resources (both videos and high-quality reference texts like LibreTexts, Wikipedia, or university notes).
     *   `query`: The search query (e.g., "breadth-first search optimization", "torque vs work physics").
     *   `context_concept`: The specific concept this reference belongs to.
 3.  **GENERATE_SIMULATION**: Request an interactive simulation for concepts that are visual, dynamic, spatial, or involve a step-by-step process.

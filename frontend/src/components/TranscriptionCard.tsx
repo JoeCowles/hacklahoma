@@ -24,17 +24,17 @@ interface TranscriptionCardProps {
   onConceptClick: (concept: Concept) => void;
 }
 
-export function TranscriptionCard({ 
-  isRecording, 
+export function TranscriptionCard({
+  isRecording,
   isPaused,
-  transcripts, 
-  error, 
-  startRecording, 
+  transcripts,
+  error,
+  startRecording,
   pauseRecording,
-  endSession, 
-  concepts, 
+  endSession,
+  concepts,
   simulations,
-  onConceptClick 
+  onConceptClick
 }: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ export function TranscriptionCard({
   // Proactively check if a simulation exists for the current selection
   useEffect(() => {
     if (selection && simulations.length > 0) {
-      const match = simulations.find(s => 
+      const match = simulations.find(s =>
         (selection.chunkId && s.chunk_id === selection.chunkId) ||
         (s.concept.toLowerCase() === selection.text.toLowerCase())
       );
@@ -66,7 +66,7 @@ export function TranscriptionCard({
       const range = sel.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       const containerRect = containerRef.current.getBoundingClientRect();
-      
+
       // Try to find the chunk ID from the parent elements
       let chunkId: string | undefined;
       let node = sel.anchorNode;
@@ -163,9 +163,9 @@ export function TranscriptionCard({
           )}
         </AnimatePresence>
 
-        <TranscriptList 
-          transcripts={transcripts} 
-          concepts={concepts} 
+        <TranscriptList
+          transcripts={transcripts}
+          concepts={concepts}
           simulations={simulations}
           onConceptClick={onConceptClick}
           onOpenSimulation={handleOpenSimulation}
@@ -187,25 +187,25 @@ export function TranscriptionCard({
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[190]"
               />
             )}
-            
+
             <motion.div
-              initial={{ 
-                opacity: 0, 
-                scale: 0.9, 
+              initial={{
+                opacity: 0,
+                scale: 0.9,
                 x: "-50%",
-                y: 10 
+                y: 10
               }}
-              animate={{ 
-                opacity: 1, 
-                scale: 1, 
+              animate={{
+                opacity: 1,
+                scale: 1,
                 x: "-50%",
-                y: simulationCode ? "-50%" : 0 
+                y: simulationCode ? "-50%" : 0
               }}
-              exit={{ 
-                opacity: 0, 
-                scale: 0.9, 
+              exit={{
+                opacity: 0,
+                scale: 0.9,
                 x: "-50%",
-                y: 10 
+                y: 10
               }}
               style={{
                 position: simulationCode ? 'fixed' : 'absolute',
@@ -335,15 +335,15 @@ function TranscriptionHeader({
   );
 }
 
-function TranscriptList({ 
-  transcripts, 
-  concepts, 
+function TranscriptList({
+  transcripts,
+  concepts,
   simulations,
   onConceptClick,
   onOpenSimulation
-}: { 
-  transcripts: TranscriptionItem[], 
-  concepts: Concept[], 
+}: {
+  transcripts: TranscriptionItem[],
+  concepts: Concept[],
   simulations: any[],
   onConceptClick: (concept: Concept) => void,
   onOpenSimulation: (code: string) => void
@@ -352,10 +352,10 @@ function TranscriptList({
     <div className="space-y-8">
       <AnimatePresence initial={false}>
         {transcripts.map((item, index) => (
-          <TranscriptItem 
-            key={`${item.time}-${index}`} 
-            item={item} 
-            concepts={concepts} 
+          <TranscriptItem
+            key={`${item.time}-${index}`}
+            item={item}
+            concepts={concepts}
             simulation={simulations.find(s => s.chunk_id === item.chunkId)}
             onConceptClick={onConceptClick}
             onOpenSimulation={onOpenSimulation}
@@ -378,15 +378,15 @@ function TranscriptList({
   );
 }
 
-function TranscriptItem({ 
-  item, 
-  concepts, 
+function TranscriptItem({
+  item,
+  concepts,
   simulation,
   onConceptClick,
   onOpenSimulation
-}: { 
-  item: TranscriptionItem, 
-  concepts: Concept[], 
+}: {
+  item: TranscriptionItem,
+  concepts: Concept[],
   simulation?: any,
   onConceptClick: (concept: Concept) => void,
   onOpenSimulation: (code: string) => void
@@ -438,7 +438,7 @@ function TranscriptItem({
         <span className="text-xs font-mono text-gray-400 font-semibold group-hover:text-white transition-colors">
           {item.time}
         </span>
-        
+
         {simulation && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -460,11 +460,11 @@ function TranscriptItem({
           </motion.div>
         )}
       </div>
-      <p 
+      <p
         data-chunk-id={item.chunkId}
         className={cn(
-          "text-xl leading-relaxed text-gray-200 font-light flex-1",
-          item.type === 'partial' && "opacity-70 italic animate-pulse text-gray-400"
+          "text-xl leading-relaxed text-white flex-1",
+          item.type === 'partial' && "italic animate-pulse text-white/90",
         )}
       >
         {renderTextWithHighlights(item.text)}

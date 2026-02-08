@@ -47,7 +47,8 @@ class PipelineService:
             "videos": [],
             "simulations": [],
             "flashcards": [],
-            "quizzes": []
+            "quizzes": [],
+            "reference_texts": []
         }
 
         for action in actions:
@@ -82,8 +83,15 @@ class PipelineService:
                     else:
                         context_id = f"ref_{int(time.time()*1000)}"
                     
-                    # Store request for background processing
+                    # Store request for background processing (Video)
                     results.setdefault("video_requests", []).append({
+                        "query": query,
+                        "context_concept": context_concept,
+                        "context_concept_id": context_id
+                    })
+                    
+                    # Store request for background processing (Text)
+                    results.setdefault("text_reference_requests", []).append({
                         "query": query,
                         "context_concept": context_concept,
                         "context_concept_id": context_id
@@ -185,6 +193,14 @@ class PipelineService:
                     "context_concept": concept_obj["keyword"],
                     "context_concept_id": concept_obj["id"]
                 })
+            
+            # Fallback for text references
+            # We can use the same flag or check if it's already there
+            results.setdefault("text_reference_requests", []).append({
+                "query": concept_obj["keyword"],
+                "context_concept": concept_obj["keyword"],
+                "context_concept_id": concept_obj["id"]
+            })
             
             # Fallback for flashcards
             if concept_obj["keyword"] not in flashcard_keywords:
