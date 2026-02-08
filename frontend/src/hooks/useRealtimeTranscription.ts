@@ -137,8 +137,11 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
 
             streamRef.current = stream;
 
-            const sampleRate = 16000;
-            const audioContext = new AudioContext({ sampleRate });
+            streamRef.current = stream;
+
+            const audioContext = new AudioContext();
+            const sampleRate = audioContext.sampleRate;
+
             if (audioContext.state === "suspended") {
                 await audioContext.resume();
             }
@@ -155,7 +158,7 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
             const params = new URLSearchParams({
                 model_id: "scribe_v2_realtime",
                 token,
-                audio_format: "pcm_16000",
+                audio_format: `pcm_${sampleRate}`,
                 language_code: "en",
                 commit_strategy: "vad",
                 include_timestamps: "true",
