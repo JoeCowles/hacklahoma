@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { LectureForm } from '../components/LectureForm';
 
 interface Lecture {
