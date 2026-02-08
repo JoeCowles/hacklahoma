@@ -15,7 +15,7 @@ A modern video generation and search application built with Next.js and FastAPI.
   - Used for generating video scripts.
   - Used for retrieving relevant YouTube video links (replacing traditional scraping).
 - **Voice Synthesis**: ElevenLabs API
-- **Database**: (Planned) Vector DB
+- **Database**: MongoDB + Atlas for semantic search
 
 ## Prerequisite
 
@@ -38,7 +38,7 @@ Create a `.env` file in `backend/`:
 ```env
 environment=dev
 gemini_api_key=YOUR_GEMINI_API_KEY
-gemini_model=gemini-2.5-flash-lite
+gemini_model=gemini-2.5-flash
 elevenlabs_api_key=YOUR_ELEVENLABS_KEY
 elevenlabs_voice_id=YOUR_VOICE_ID
 ```
@@ -66,7 +66,6 @@ npm run dev
 
 ## Docker
 - Build and run:
-  - `cd /Users/joecowles/Desktop/hacklahoma`
   - `docker compose up --build`
 
 Frontend: `http://localhost:3000`
