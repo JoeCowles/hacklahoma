@@ -31,13 +31,6 @@ import { KeyConcepts, Concept, Flashcard, Quiz } from '../components/KeyConcepts
 const lecturesData = [];
 
 export default function LectureAssistantDashboard() {
-<<<<<<< HEAD
-  const { isRecording, isPaused, transcripts, error, startRecording, pauseRecording, endSession, concepts, videos, simulations, flashcards, quizzes } = useRealtimeTranscription();
-=======
-
-
-
-
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('classes');
   const [lectures, setLectures] = useState<Lecture[]>([]);
@@ -50,19 +43,23 @@ export default function LectureAssistantDashboard() {
 
   const {
     isRecording,
+    isPaused,
     transcripts,
     error,
     startRecording,
+    pauseRecording,
+    endSession,
     stopRecording,
     concepts,
     videos,
     simulations,
+    flashcards,
+    quizzes,
     setConcepts,
     setVideos,
     setSimulations,
     setTranscripts
   } = useRealtimeTranscription(currentLecture?.id || null);
->>>>>>> graysen/persistant-lectures
 
   // Map backend concepts to UI format
   // The hook returns concepts as any[], we cast/map them to our Concept interface
@@ -74,7 +71,6 @@ export default function LectureAssistantDashboard() {
     source_chunk_id: c.source_chunk_id
   }));
 
-<<<<<<< HEAD
   const allFlashcards: Flashcard[] = flashcards.map((f: any) => ({
     id: f.id,
     concept_id: f.concept_id,
@@ -88,17 +84,6 @@ export default function LectureAssistantDashboard() {
     status: q.status,
     questions: q.questions
   }));
-
-  const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
-  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('live-learn');
-  const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
-  const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
-  const [isClassFormOpen, setIsClassFormOpen] = useState(false);
-
-=======
->>>>>>> graysen/persistant-lectures
   const fetchLectures = async () => {
     try {
       const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");

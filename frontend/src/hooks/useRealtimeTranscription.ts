@@ -14,18 +14,18 @@ interface UseRealtimeTranscriptionReturn {
     startRecording: () => Promise<void>;
     pauseRecording: () => void;
     endSession: () => void;
+    stopRecording: () => void;
     concepts: any[];
     videos: any[];
     simulations: any[];
-<<<<<<< HEAD
     flashcards: any[];
     quizzes: any[];
-=======
     setConcepts: React.Dispatch<React.SetStateAction<any[]>>;
     setVideos: React.Dispatch<React.SetStateAction<any[]>>;
     setSimulations: React.Dispatch<React.SetStateAction<any[]>>;
     setTranscripts: React.Dispatch<React.SetStateAction<TranscriptionItem[]>>;
->>>>>>> graysen/persistant-lectures
+    setFlashcards: React.Dispatch<React.SetStateAction<any[]>>;
+    setQuizzes: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const ELEVENLABS_REALTIME_URL = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
@@ -185,7 +185,7 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                             });
                         }
                         if (results.quizzes) {
-                             setQuizzes(prev => {
+                            setQuizzes(prev => {
                                 const next = [...prev];
                                 results.quizzes.forEach((newQuiz: any) => {
                                     const index = next.findIndex(q => q.id === newQuiz.id);
@@ -246,13 +246,12 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                         is_final: true
                     }));
                 }
-<<<<<<< HEAD
-                
+
                 return [...prev.slice(0, -1), { ...last, text: transcriptText, type: "committed" }];
             } else if (prev.length > 0) {
-                 // Send a final marker even if no partial transcript exists
-                 const lectureId = "lecture_" + new Date().toISOString().split('T')[0];
-                 if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
+                // Send a final marker even if no partial transcript exists
+                const lectureId = "lecture_" + new Date().toISOString().split('T')[0];
+                if (backendSocketRef.current && backendSocketRef.current.readyState === WebSocket.OPEN) {
                     backendSocketRef.current.send(JSON.stringify({
                         type: "transcript_commit",
                         lecture_id: lectureId,
@@ -262,10 +261,6 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                         is_final: true
                     }));
                 }
-=======
-
-                return [...prev.slice(0, -1), { ...last, type: "committed" }];
->>>>>>> graysen/persistant-lectures
             }
             return prev;
         });
@@ -417,26 +412,27 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
             setError(message);
             cleanupTranscription();
         }
-<<<<<<< HEAD
-    }, [cleanupTranscription, isRecording, transcripts]); // Added transcripts to dependency array for context
-
-    return { isRecording, isPaused, transcripts, error, startRecording, pauseRecording, endSession, concepts, videos, simulations, flashcards, quizzes };
-=======
-    }, [cleanup, isRecording, transcripts, lectureId]); // Added transcripts and lectureId to dependency array for context
+    }, [cleanupTranscription, isRecording, transcripts, lectureId]);
 
     return {
         isRecording,
+        isPaused,
         transcripts,
         error,
         startRecording,
-        stopRecording,
+        stopRecording: endSession, // Mapping endSession to stopRecording for compatibility if needed, but we expose both
+        pauseRecording,
+        endSession,
         concepts,
         videos,
         simulations,
+        flashcards,
+        quizzes,
         setConcepts,
         setVideos,
         setSimulations,
-        setTranscripts
+        setTranscripts,
+        setFlashcards,
+        setQuizzes
     };
->>>>>>> graysen/persistant-lectures
 }
