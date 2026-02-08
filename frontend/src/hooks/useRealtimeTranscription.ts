@@ -200,7 +200,20 @@ export function useRealtimeTranscription(): UseRealtimeTranscriptionReturn {
                             setVideos(prev => [...prev, ...results.videos]);
                         }
                         if (results.simulations) {
-                            setSimulations(prev => [...prev, ...results.simulations]);
+                            setSimulations(prev => {
+                                const next = [...prev];
+                                results.simulations.forEach((newSim: any) => {
+                                    const index = next.findIndex(s => s.concept_id === newSim.concept_id);
+                                    if (index !== -1) {
+                                        // Update existing
+                                        next[index] = { ...next[index], ...newSim };
+                                    } else {
+                                        // Add new
+                                        next.push(newSim);
+                                    }
+                                });
+                                return next;
+                            });
                         }
                     }
                 } catch (e) {
