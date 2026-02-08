@@ -11,7 +11,7 @@ A modern video generation and search application built with Next.js and FastAPI.
 
 ### Backend
 - **Framework**: FastAPI (Python)
-- **AI/LLM**: Google Gemini API (`gemini-2.5-flash-lite`)
+- **AI/LLM**: Google Gemini API (`gemini-2.5-flash`)
   - Used for generating video scripts.
   - Used for retrieving relevant YouTube video links (replacing traditional scraping).
 - **Voice Synthesis**: ElevenLabs API

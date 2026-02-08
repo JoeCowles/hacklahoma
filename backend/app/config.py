@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,9 +15,8 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str | None = None
     elevenlabs_tts_model_id: str = "eleven_multilingual_v2"
     vector_db_url: str | None = None
-    mongo_connection_string: str | None = None
+    mongo_connection_string: str | None = Field(default=None, validation_alias="vector_db_url")
     credit_start_balance: int = 50
-    mongo_connection_string: str | None = None
     transcript_embeddings_key: str | None = None
 
 

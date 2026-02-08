@@ -36,6 +36,7 @@ export function TranscriptionCard({
 }: TranscriptionCardProps) {
   // Auto-scroll to bottom of transcripts
   const listEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<{ text: string, x: number, y: number } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [simulationCode, setSimulationCode] = useState<string | null>(null);
@@ -46,13 +47,15 @@ export function TranscriptionCard({
 
   const handleMouseUp = () => {
     const sel = window.getSelection();
-    if (sel && sel.toString().trim().length > 0) {
+    if (sel && sel.toString().trim().length > 0 && containerRef.current) {
       const range = sel.getRangeAt(0);
       const rect = range.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+
       setSelection({
         text: sel.toString().trim(),
-        x: rect.left + rect.width / 2,
-        y: rect.top + window.scrollY
+        x: rect.left - containerRect.left + rect.width / 2,
+        y: rect.bottom - containerRect.top
       });
     } else {
       if (!isGenerating && !simulationCode) {
@@ -94,7 +97,8 @@ export function TranscriptionCard({
 
   return (
     <div
-      className="flex-[3] flex flex-col border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative animate-in fade-in duration-300 h-full overflow-hidden"
+      ref={containerRef}
+      className="flex-[3] flex flex-col border-r border-gray-200 dark:border-slate-800 bg-black/20 relative animate-in fade-in duration-300 h-full overflow-hidden selection:bg-violet-500/50 selection:text-white"
       onMouseUp={handleMouseUp}
     >
       <TranscriptionHeader
@@ -126,57 +130,70 @@ export function TranscriptionCard({
         <div ref={listEndRef} />
       </div>
 
-      {/* Floating Simulation Tooltip */}
+      {/* Floating Simulation Tooltip/Modal */}
       <AnimatePresence>
         {selection && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            style={{
-              position: 'fixed',
-              left: selection.x,
-              top: selection.y - 10,
-              transform: 'translateX(-50%) translateY(-100%)',
-              zIndex: 100
-            }}
-            className="bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-gray-200 dark:border-slate-700 p-2 min-w-[200px]"
-          >
-            {!simulationCode && !isGenerating && (
-              <button
-                onClick={handleCreateSimulation}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 rounded-lg text-primary transition-colors text-sm font-bold"
-              >
-                <span className="material-symbols-outlined text-lg">science</span>
-                Simulate Selection
-              </button>
-            )}
-
-            {isGenerating && (
-              <div className="flex items-center gap-3 px-3 py-2 text-sm text-[#616f89]">
-                <div className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                Generating Visuals...
-              </div>
-            )}
-
+          <>
+            {/* Backdrop for the full visualizer when it's ready */}
             {simulationCode && (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between px-2 pt-1">
-                  <span className="text-[10px] font-bold text-primary uppercase">Selection Visualizer</span>
-                  <button onClick={() => { setSelection(null); setSimulationCode(null); }} className="text-gray-400 hover:text-red-500">
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-                </div>
-                <div className="w-[600px] h-[450px] bg-white rounded-lg overflow-hidden border border-gray-100">
-                  <iframe
-                    srcDoc={simulationCode}
-                    className="w-full h-full border-none"
-                    sandbox="allow-scripts"
-                  />
-                </div>
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => { setSelection(null); setSimulationCode(null); }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[190]"
+              />
             )}
-          </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              style={{
+                position: simulationCode ? 'fixed' : 'absolute',
+                left: simulationCode ? '50%' : selection.x,
+                top: simulationCode ? '50%' : selection.y + 10,
+                transform: simulationCode ? 'translate(-50%, -50%)' : 'translateX(-50%)',
+                zIndex: 200
+              }}
+              className="bg-neutral-900 shadow-2xl rounded-xl border border-white/10 p-2 min-w-[200px]"
+            >
+              {!simulationCode && !isGenerating && (
+                <button
+                  onClick={handleCreateSimulation}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 rounded-lg text-white transition-colors text-sm font-bold"
+                >
+                  <span className="material-symbols-outlined text-lg">science</span>
+                  Simulate Selection
+                </button>
+              )}
+
+              {isGenerating && (
+                <div className="flex items-center gap-3 px-3 py-2 text-sm text-neutral-400">
+                  <div className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                  Generating Visuals...
+                </div>
+              )}
+
+              {simulationCode && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between px-2 pt-1">
+                    <span className="text-[10px] font-bold text-white uppercase">Selection Visualizer</span>
+                    <button onClick={() => { setSelection(null); setSimulationCode(null); }} className="text-neutral-400 hover:text-red-500 transition-colors">
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  </div>
+                  <div className="w-[80vw] max-w-[1000px] aspect-video bg-white rounded-lg overflow-hidden border border-white/5 shadow-2xl">
+                    <iframe
+                      srcDoc={simulationCode}
+                      className="w-full h-full border-none"
+                      sandbox="allow-scripts"
+                    />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
@@ -197,7 +214,7 @@ function TranscriptionHeader({
   onEnd: () => void;
 }) {
   return (
-    <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-black/20 sticky top-0 z-10 shrink-0 backdrop-blur-xl">
+    <div className="px-8 py-6 border-b border-black/5 flex items-center justify-between bg-black/5 sticky top-0 z-10 shrink-0 backdrop-blur-xl">
       <div className="flex items-center gap-4">
         <div className="p-2.5 rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
           <span className="material-symbols-outlined text-xl">description</span>
@@ -225,8 +242,8 @@ function TranscriptionHeader({
           className={cn(
             "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all min-w-[140px] justify-center shadow-lg backdrop-blur-sm border",
             isRecording
-              ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20 hover:border-yellow-500/40 hover:shadow-yellow-500/20"
-              : "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20 hover:border-green-500/40 hover:shadow-green-500/20"
+              ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20 hover:border-yellow-500/40 hover:shadow-yellow-500/20"
+              : "bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 hover:border-green-500/40 hover:shadow-green-500/20"
           )}
         >
           <span className="material-symbols-outlined text-xl">
@@ -244,16 +261,16 @@ function TranscriptionHeader({
             onClick={onEnd}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all min-w-[140px] justify-center shadow-lg backdrop-blur-sm border bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 hover:shadow-red-500/20"
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all min-w-[140px] justify-center shadow-lg backdrop-blur-sm border bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 hover:shadow-red-500/20"
           >
             <span className="material-symbols-outlined text-xl">stop_circle</span>
             <span className="inline uppercase tracking-wide">End Session</span>
           </motion.button>
         )}
 
-        <div className="h-6 w-px bg-white/10 mx-2"></div>
+        <div className="h-6 w-px bg-black/10 mx-2"></div>
 
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-black/5 text-neutral-500 hover:text-neutral-800 transition-colors">
           <span className="material-symbols-outlined text-xl">text_fields</span>
         </button>
       </div>

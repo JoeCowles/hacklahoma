@@ -174,7 +174,7 @@ export default function LectureAssistantDashboard() {
     : null;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-fuchsia-500/30 h-full">
+    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-violet-500/50 selection:text-white h-full">
 
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none h-full w-full overflow-hidden">
@@ -200,7 +200,7 @@ export default function LectureAssistantDashboard() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-600/20 shrink-0 ring-1 ring-white/10">
             <span className="material-symbols-outlined text-white text-2xl">school</span>
           </div>
-          <h1 className="font-bold text-xl tracking-tight hidden md:block text-white">LearnStream</h1>
+          <h1 className="font-bold text-xl tracking-tight hidden md:block text-neutral-800">LearnStream</h1>
         </div>
 
         <div className="flex flex-col gap-3 mt-4">
@@ -222,13 +222,13 @@ export default function LectureAssistantDashboard() {
         </div>
 
         <div className="mt-auto">
-          <div className="glass-card p-4 rounded-2xl flex items-center gap-4 cursor-pointer group border border-white/10 hover:border-white/20 transition-all hover:bg-white/10">
-            <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden ring-2 ring-white/20">
+          <div className="bg-white/5 backdrop-blur-md border border-white/5 p-4 rounded-2xl flex items-center gap-4 cursor-pointer group transition-all hover:bg-white/10">
+            <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden ring-2 ring-white/5">
               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" className="w-full h-full object-cover" />
             </div>
             <div className="hidden md:block overflow-hidden">
-              <p className="text-sm font-bold text-white truncate group-hover:text-violet-200 transition-colors">Student User</p>
-              <p className="text-xs text-gray-400 truncate group-hover:text-gray-300 transition-colors">student@edu.com</p>
+              <p className="text-sm font-bold text-neutral-800 truncate group-hover:text-violet-600 transition-colors">Student User</p>
+              <p className="text-xs text-neutral-500 truncate group-hover:text-neutral-600 transition-colors">student@edu.com</p>
             </div>
           </div>
         </div>
@@ -249,12 +249,12 @@ export default function LectureAssistantDashboard() {
               >
                 <button
                   onClick={() => setActiveSection('lectures')}
-                  className="group flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all"
+                  className="group flex items-center gap-2 hover:bg-black/5 px-3 py-1.5 rounded-lg transition-all"
                 >
-                  <h2 className="text-2xl font-bold text-white tracking-tight group-hover:text-violet-300 transition-colors">
+                  <h2 className="text-2xl font-bold text-neutral-800 tracking-tight group-hover:text-violet-600 transition-colors">
                     {currentLecture ? `${currentLecture.class_name}` : "Select a Lecture"}
                   </h2>
-                  <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">expand_more</span>
+                  <span className="material-symbols-outlined text-neutral-400 group-hover:text-neutral-600 transition-colors">expand_more</span>
                 </button>
 
                 <div className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-2.5 shadow-sm shadow-red-500/5">
@@ -262,7 +262,7 @@ export default function LectureAssistantDashboard() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                   </span>
-                  <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Live</span>
+                  <span className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Live</span>
                 </div>
               </motion.div>
             )}
@@ -271,29 +271,29 @@ export default function LectureAssistantDashboard() {
                 {selectedClass && (
                   <button
                     onClick={() => setSelectedClass(null)}
-                    className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+                    className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-800 transition-colors"
                   >
                     <span className="material-symbols-outlined text-lg">arrow_back</span>
                     Back to All
                   </button>
                 )}
-                <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
+                <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-neutral-800 tracking-tight">
                   {selectedClass ? `${selectedClass.name} Lectures` : "My Lectures"}
                 </motion.h2>
               </div>
             )}
             {activeSection === 'classes' && (
-              <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
+              <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-neutral-800 tracking-tight">
                 My Classes
               </motion.h2>
             )}
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95">
+            <button className="p-3 rounded-xl hover:bg-black/5 text-neutral-500 hover:text-neutral-800 transition-all hover:scale-105 active:scale-95">
               <span className="material-symbols-outlined text-xl">notifications</span>
             </button>
-            <button className="p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95">
+            <button className="p-3 rounded-xl hover:bg-black/5 text-neutral-500 hover:text-neutral-800 transition-all hover:scale-105 active:scale-95">
               <span className="material-symbols-outlined text-xl">help</span>
             </button>
           </div>
@@ -304,57 +304,58 @@ export default function LectureAssistantDashboard() {
 
           {activeSection === 'lectures' && (
             <div className="p-10 overflow-y-auto custom-scrollbar h-full">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {/* Create New Class Card */}
+              <div className="flex flex-wrap gap-8">
+                {/* Create New Lecture Card */}
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsLectureFormOpen(true)}
-                  className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer group min-h-[220px]"
+                  className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-neutral-700/20 transition-all cursor-pointer group aspect-[3/2] w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)] min-h-[220px] bg-neutral-800/20"
                 >
                   <div className="size-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors ring-1 ring-white/10 group-hover:ring-violet-500/30">
                     <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-violet-400 transition-colors">add</span>
                   </div>
                   <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Lecture</p>
                 </motion.div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {lectures
-                    .filter(l => !selectedClass || l.class_id === selectedClass.id)
-                    .map((lecture) => (
+                
+                {lectures
+                  .filter(l => !selectedClass || l.class_id === selectedClass.id)
+                  .map((lecture) => (
+                    <div key={lecture.id} className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]">
                       <LectureCard
-                        key={lecture.id}
                         lecture={lecture}
                         onClick={() => loadLectureDetails(lecture.id)}
                       />
-                    ))}
-                </div>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
 
           {activeSection === 'classes' && (
             <div className="p-10 overflow-y-auto custom-scrollbar h-full">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="flex flex-wrap gap-8">
                 {/* Create New Class Card */}
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsClassFormOpen(true)}
-                  className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer group min-h-[220px]"
+                  className="border-2 border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-6 hover:border-violet-500/50 hover:bg-neutral-700/20 transition-all cursor-pointer group aspect-[3/2] w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)] min-h-[220px] bg-neutral-800/20"
                 >
                   <div className="size-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors ring-1 ring-white/10 group-hover:ring-violet-500/30">
                     <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-violet-400 transition-colors">add</span>
                   </div>
                   <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Class</p>
                 </motion.div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {classes.map((cls) => (
-                    <ClassCard key={cls.id} cls={cls} onClick={() => {
+                
+                {classes.map((cls) => (
+                  <div key={cls.id} className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]">
+                    <ClassCard cls={cls} onClick={() => {
                       setSelectedClass(cls);
                       setActiveSection('lectures');
                     }} />
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -417,14 +418,14 @@ export default function LectureAssistantDashboard() {
                     className="flex-[2] flex flex-col h-full bg-black/20"
                   >
                     {/* Concept Detail View Header */}
-                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
+                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/5 backdrop-blur-xl shrink-0">
                       <div className="flex items-center gap-4">
-                        <div className="p-3 bg-fuchsia-500/20 rounded-xl text-fuchsia-400 ring-1 ring-fuchsia-500/30">
+                        <div className="p-3 bg-fuchsia-500/20 rounded-xl text-fuchsia-600 ring-1 ring-fuchsia-500/30">
                           <span className="material-symbols-outlined text-2xl">lightbulb</span>
                         </div>
                         <h3 className="text-2xl font-bold text-white tracking-tight">{selectedConcept.keyword}</h3>
                       </div>
-                      <button onClick={handleClosePanel} className="p-2.5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95">
+                      <button onClick={handleClosePanel} className="p-2.5 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all hover:scale-105 active:scale-95">
                         <span className="material-symbols-outlined text-xl">close</span>
                       </button>
                     </div>
@@ -437,7 +438,7 @@ export default function LectureAssistantDashboard() {
 
                       {/* Related Material Section */}
                       <div className="space-y-4">
-                        <h3 className="font-bold text-sm text-[#111318] dark:text-slate-200 uppercase tracking-wide">Related Material</h3>
+                        <h3 className="font-bold text-sm text-gray-200 uppercase tracking-wide">Related Material</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                           {/* Interactive Simulation Card */}
@@ -449,7 +450,7 @@ export default function LectureAssistantDashboard() {
                                   Interactive Simulation
                                 </span>
                               </div>
-                              <div className="w-full aspect-video bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm hover:border-primary/50 transition-colors">
+                              <div className="w-full aspect-video bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:border-primary/50 transition-colors">
                                 {relatedSimulation.code ? (
                                   <iframe
                                     srcDoc={relatedSimulation.code}
@@ -460,11 +461,11 @@ export default function LectureAssistantDashboard() {
                                 ) : (
                                   <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                                     <span className="material-symbols-outlined text-4xl text-gray-300 animate-pulse mb-2">science</span>
-                                    <p className="text-sm text-[#616f89]">Generating simulation...</p>
+                                    <p className="text-sm text-gray-500">Generating simulation...</p>
                                   </div>
                                 )}
                               </div>
-                              <p className="text-xs text-[#616f89] dark:text-slate-400 italic px-1">
+                              <p className="text-xs text-gray-400 italic px-1">
                                 {relatedSimulation.description}
                               </p>
                             </div>
@@ -474,12 +475,12 @@ export default function LectureAssistantDashboard() {
                           {relatedVideos.map((video, i) => (
                             <div key={i} className="flex flex-col gap-3">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded uppercase flex items-center gap-1">
                                   <span className="material-symbols-outlined text-[12px]">play_circle</span>
                                   Video Reference
                                 </span>
                               </div>
-                              <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-slate-800">
+                              <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm border border-gray-200">
                                 <iframe
                                   width="100%"
                                   height="100%"
@@ -490,7 +491,7 @@ export default function LectureAssistantDashboard() {
                                   className="w-full h-full"
                                 ></iframe>
                               </div>
-                              <p className="text-xs font-bold text-[#111318] dark:text-slate-200 px-1 line-clamp-1">
+                              <p className="text-xs font-bold text-gray-200 px-1 line-clamp-1">
                                 {video.title}
                               </p>
                             </div>
@@ -525,13 +526,13 @@ function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: 
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 group ${active
-        ? 'bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-white/10 text-white shadow-lg shadow-violet-500/5'
-        : 'hover:bg-white/5 text-gray-400 hover:text-white'
+        ? 'bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-black/5 text-violet-700 shadow-lg shadow-violet-500/5'
+        : 'hover:bg-black/5 text-neutral-500 hover:text-neutral-800'
         }`}
     >
-      <span className={`material-symbols-outlined text-xl transition-colors ${active ? 'text-violet-400' : 'group-hover:text-gray-200'}`}>{icon}</span>
+      <span className={`material-symbols-outlined text-xl transition-colors ${active ? 'text-violet-600' : 'group-hover:text-neutral-700'}`}>{icon}</span>
       <span className="font-medium text-sm hidden md:block tracking-wide">{label}</span>
-      {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)] hidden md:block" />}
+      {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-600 shadow-[0_0_8px_rgba(124,58,237,0.8)] hidden md:block" />}
     </button>
   )
 }
@@ -541,16 +542,18 @@ function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => vo
     <motion.div
       whileHover={{ y: -5 }}
       onClick={onClick}
-      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
+      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer aspect-[3/2] flex flex-col justify-between min-h-[220px]"
     >
       <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400`}>
         Active
       </div>
 
-      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">{lecture.class_name}</h3>
-      <p className="text-sm text-gray-400 mb-6">{lecture.professor}</p>
+      <div>
+        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">{lecture.class_name}</h3>
+        <p className="text-sm text-gray-400">{lecture.professor}</p>
+      </div>
 
-      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
+      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4 mt-auto">
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">calendar_today</span>
           {lecture.date}
@@ -569,16 +572,18 @@ function ClassCard({ cls, onClick }: { cls: Class; onClick?: () => void }) {
     <motion.div
       whileHover={{ y: -5 }}
       onClick={onClick}
-      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
+      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer aspect-[3/2] flex flex-col justify-between min-h-[220px]"
     >
       <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-fuchsia-500/20 text-fuchsia-400`}>
         Enrolled
       </div>
 
-      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">{cls.name}</h3>
-      <p className="text-sm text-gray-400 mb-6">{cls.professor}</p>
+      <div>
+        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">{cls.name}</h3>
+        <p className="text-sm text-gray-400">{cls.professor}</p>
+      </div>
 
-      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
+      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4 mt-auto">
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">school</span>
           {cls.school}
