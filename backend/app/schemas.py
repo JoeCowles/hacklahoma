@@ -164,6 +164,12 @@ class OnboardingResponse(BaseModel):
     status: str
 
 
+class LikeSimulationRequest(BaseModel):
+    concept: str
+    code: str
+    description: str | None = None
+
+
 class Flashcard(BaseModel):
     id: str | None = None
     concept_id: str | None = None

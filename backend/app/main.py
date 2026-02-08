@@ -34,6 +34,7 @@ from .schemas import (
     LectureSearchResponse,
     OnboardingRequest,
     OnboardingResponse,
+    LikeSimulationRequest,
     ShareRequest,
     ShareResponse,
     TranscriptChunk,
@@ -228,12 +229,20 @@ def login(payload: AuthLoginRequest) -> AuthLoginResponse:
 
 async def run_simulation_background(websocket: WebSocket, simulation_service: SimulationService, sim_request: dict, lecture_id: str, previous_context: str, text: str):
     try:
-        print(f"DEBUG: Starting background simulation for {sim_request['concept']}")
-        code = await simulation_service.generate_simulation(
-            concept=sim_request["concept"],
-            description=sim_request["description"],
-            context=f"{previous_context}\n\nRecent Transcript: {text}"
-        )
+        concept = sim_request["concept"]
+        print(f"DEBUG: Starting background simulation for {concept}")
+        
+        # Check Cache first
+        cached = await simulation_service.get_cached_simulation(db, concept)
+        if cached:
+            code = cached["code"]
+            print(f"DEBUG: Using cached simulation for {concept}")
+        else:
+            code = await simulation_service.generate_simulation(
+                concept=concept,
+                description=sim_request["description"],
+                context=f"{previous_context}\n\nRecent Transcript: {text}"
+            )
         
         # Send update to client
         try:
@@ -250,13 +259,13 @@ async def run_simulation_background(websocket: WebSocket, simulation_service: Si
                     }]
                 }
             })
-            print(f"DEBUG: Background simulation for {sim_request['concept']} completed and sent.")
+            print(f"DEBUG: Background simulation for {concept} completed and sent.")
 
             # Persist simulation
             if db is not None:
                 sim_doc = {
                     "lecture_id": lecture_id,
-                    "concept": sim_request["concept"],
+                    "concept": concept,
                     "description": sim_request.get("description"),
                     "code": code,
                     "status": "ready",
@@ -463,11 +472,18 @@ async def run_chunk_simulation_background(websocket: WebSocket, simulation_servi
         )
         
         if result:
-            print(f"DEBUG: Chunk simulation completed for concept: {result['concept']}")
+            concept = result["concept"]
+            # Try to see if this concept (now that we found it) is in cache
+            cached = await simulation_service.get_cached_simulation(db, concept)
+            if cached:
+                print(f"DEBUG: Found cached version for extracted chunk concept: {concept}")
+                result["code"] = cached["code"]
+
+            print(f"DEBUG: Chunk simulation completed for concept: {concept}")
             
             # Construct simulation object
             sim_obj = {
-                "concept": result["concept"],
+                "concept": concept,
                 "concept_id": f"sim_chunk_{chunk_id}", 
                 "chunk_id": chunk_id,
                 "description": result["description"],
@@ -817,6 +833,11 @@ async def generate_animation(payload: AnimationRequest) -> AnimationResponse:
     if not settings.gemini_api_key:
         raise HTTPException(status_code=500, detail="Gemini API key is not configured")
 
+    # Check Cache first
+    cached = await simulation_service.get_cached_simulation(db, payload.concept)
+    if cached:
+        return AnimationResponse(concept=payload.concept, status="ready", asset_url=None, code=cached["code"])
+
     # For on-demand, we might not have full context
     context = f"Manual request for animation on: {payload.concept}"
     
@@ -832,6 +853,24 @@ async def generate_animation(payload: AnimationRequest) -> AnimationResponse:
     if not code:
         raise HTTPException(status_code=502, detail="Gemini returned empty code")
     return AnimationResponse(concept=payload.concept, status="ready", asset_url=None, code=code)
+
+
+@app.post("/simulations/like")
+async def like_simulation(payload: LikeSimulationRequest, current_user: dict = Depends(get_current_user)):
+    """
+    User likes a simulation, adding it to the semantic cache.
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    await simulation_service.cache_simulation(
+        db, 
+        concept=payload.concept, 
+        description=payload.description or f"User liked simulation for {payload.concept}", 
+        code=payload.code
+    )
+    
+    return {"status": "success", "message": f"Simulation for {payload.concept} cached."}
 
 
 @app.post("/videos/search", response_model=VideoSearchResponse)

@@ -15,6 +15,83 @@ class SimulationService:
         self.user_template = load_prompt("simulation_user")
         self.chunk_template = load_prompt("simulation_from_chunk")
 
+    async def get_cached_simulation(self, db, concept: str) -> dict | None:
+        """
+        Tries to find a similar simulation in the cache using Atlas Search (Lucene).
+        This does NOT require Gemini embeddings.
+        """
+        if db is None:
+            return None
+            
+        try:
+            # Native MongoDB Atlas Search (Lucene-based)
+            # Increased leniency: maxEdits: 2 allows for more variations/typos
+            pipeline = [
+                {
+                    "$search": {
+                        "index": "default",
+                        "text": {
+                            "query": concept,
+                            "path": "concept",
+                            "fuzzy": {
+                                "maxEdits": 2,
+                                "prefixLength": 0
+                            }
+                        }
+                    }
+                },
+                {
+                    "$limit": 1
+                }
+            ]
+            
+            results = list(db.simulation_cache.aggregate(pipeline))
+            if results:
+                res = results[0]
+                print(f"DEBUG: Atlas Search cache hit for concept '{concept}' -> using cached simulation for '{res.get('concept')}'")
+                return {
+                    "concept": res.get("concept"),
+                    "description": res.get("description"),
+                    "code": res.get("code")
+                }
+        except Exception as e:
+            # Fallback to broader match if Atlas Search index is not configured yet
+            print(f"DEBUG: Atlas Search not available or failed, trying broader match: {e}")
+            # Try case-insensitive substring match for more leniency
+            res = db.simulation_cache.find_one({"concept": {"$regex": concept, "$options": "i"}})
+            if res:
+                return {
+                    "concept": res.get("concept"),
+                    "description": res.get("description"),
+                    "code": res.get("code")
+                }
+            
+        return None
+
+    async def cache_simulation(self, db, concept: str, description: str, code: str):
+        """
+        Caches a simulation. Indexed by concept for Atlas Search.
+        """
+        if db is None:
+            return
+
+        try:
+            db.simulation_cache.update_one(
+                {"concept": concept},
+                {
+                    "$set": {
+                        "concept": concept,
+                        "description": description,
+                        "code": code,
+                        "cached_at": __import__("time").time()
+                    }
+                },
+                upsert=True
+            )
+            print(f"DEBUG: Cached simulation for '{concept}'")
+        except Exception as e:
+            print(f"Error caching simulation: {e}")
+
     async def generate_simulation(self, concept: str, description: str, context: str) -> str:
         """
         Generates a self-contained HTML/ThreeJS simulation for the given concept.

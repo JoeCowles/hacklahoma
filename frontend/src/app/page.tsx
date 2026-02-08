@@ -255,6 +255,30 @@ export default function LectureAssistantDashboard() {
     setActiveSection(section);
   };
 
+  const handleLikeSimulation = async (concept: string, code: string, description?: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/simulations/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          concept,
+          code,
+          description
+        })
+      });
+      if (res.ok) {
+        alert(`Successfully liked and cached the simulation for ${concept}!`);
+      }
+    } catch (error) {
+      console.error("Failed to like simulation:", error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user_id');
@@ -637,6 +661,15 @@ export default function LectureAssistantDashboard() {
                                   <span className="material-symbols-outlined text-[12px]">science</span>
                                   Interactive Simulation
                                 </span>
+                                {relatedSimulation.code && (
+                                  <button
+                                    onClick={() => handleLikeSimulation(selectedConcept.keyword, relatedSimulation.code, relatedSimulation.description)}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 border border-fuchsia-500/20 rounded-lg transition-all group"
+                                  >
+                                    <span className="material-symbols-outlined text-sm text-fuchsia-500 group-hover:scale-110 transition-transform">favorite</span>
+                                    <span className="text-[10px] font-bold text-fuchsia-500 uppercase tracking-wider">Like & Cache</span>
+                                  </button>
+                                )}
                               </div>
                               <div className="w-full aspect-video bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:border-primary/50 transition-colors">
                                 {relatedSimulation.code ? (
