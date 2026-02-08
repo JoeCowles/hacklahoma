@@ -106,6 +106,10 @@ class Lecture(BaseModel):
     professor: str | None = None
     school: str | None = None
     class_time: str | None = None
+    creator_name: str | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
+    chunk_count: int = 0
 
 
 class LectureListResponse(BaseModel):
@@ -125,6 +129,10 @@ class Class(BaseModel):
     professor: str
     school: str
     class_time: str
+    creator_name: str | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
+    lecture_count: int = 0
 
 
 class ClassListResponse(BaseModel):

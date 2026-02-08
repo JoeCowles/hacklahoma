@@ -664,6 +664,8 @@ async def process_transcript_message(websocket: WebSocket, message: dict):
                     "timestamp": time.time()
                 }
                 db.transcripts.insert_one(transcript_doc)
+                # Update lecture last updated time
+                db.lectures.update_one({"id": lecture_id}, {"$set": {"updated_at": time.time()}})
 
         new_concepts_data = result.get("concepts", [])
         if new_concepts_data:
@@ -900,17 +902,21 @@ def onboarding(payload: OnboardingRequest) -> OnboardingResponse:
 
 
 @app.post("/lectures/create", response_model=Lecture)
-def create_lecture(payload: CreateLectureRequest) -> Lecture:
+def create_lecture(payload: CreateLectureRequest, current_user: dict = Depends(get_current_user)) -> Lecture:
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     lecture_id = f"lecture_{uuid.uuid4()}"
+    now = time.time()
     
     new_lecture = {
         "id": lecture_id,
         "class_id": payload.class_id,
         "date": payload.date,
         "student_id": payload.student_id,
+        "creator_name": current_user.get("display_name", "Unknown"),
+        "created_at": now,
+        "updated_at": now,
     }
 
     # Validate class exists
@@ -919,6 +925,9 @@ def create_lecture(payload: CreateLectureRequest) -> Lecture:
         raise HTTPException(status_code=404, detail="Class not found")
     
     db.lectures.insert_one(new_lecture.copy())
+    
+    # Update class last updated time
+    db.classes.update_one({"id": payload.class_id}, {"$set": {"updated_at": now}})
     
     return Lecture(
         **new_lecture,
@@ -944,6 +953,9 @@ def get_lectures() -> LectureListResponse:
         class_id = l.get("class_id")
         class_info = classes_map.get(class_id, {})
         
+        # Count transcript chunks for this lecture
+        chunk_count = db.transcripts.count_documents({"lecture_id": l["id"], "type": "committed"})
+        
         lectures.append(Lecture(
             id=l["id"],
             class_id=l.get("class_id", ""),
@@ -952,7 +964,11 @@ def get_lectures() -> LectureListResponse:
             class_name=class_info.get("name"),
             professor=class_info.get("professor"),
             school=class_info.get("school"),
-            class_time=class_info.get("class_time")
+            class_time=class_info.get("class_time"),
+            creator_name=l.get("creator_name") or class_info.get("creator_name"),
+            created_at=l.get("created_at"),
+            updated_at=l.get("updated_at"),
+            chunk_count=chunk_count
         ))
         
     return LectureListResponse(lectures=lectures)
@@ -1021,6 +1037,9 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
     class_id = lecture_doc.get("class_id")
     class_doc = db.classes.find_one({"id": class_id}) if class_id else None
     
+    # Count transcript chunks for this lecture
+    chunk_count = db.transcripts.count_documents({"lecture_id": lecture_id, "type": "committed"})
+
     lecture = Lecture(
         id=lecture_doc["id"],
         class_id=lecture_doc.get("class_id", ""),
@@ -1029,7 +1048,11 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
         class_name=class_doc.get("name") if class_doc else None,
         professor=class_doc.get("professor") if class_doc else None,
         school=class_doc.get("school") if class_doc else None,
-        class_time=class_doc.get("class_time") if class_doc else None
+        class_time=class_doc.get("class_time") if class_doc else None,
+        creator_name=lecture_doc.get("creator_name") or (class_doc.get("creator_name") if class_doc else None),
+        created_at=lecture_doc.get("created_at"),
+        updated_at=lecture_doc.get("updated_at"),
+        chunk_count=chunk_count
     )
 
     # 2. Get Concepts
@@ -1063,8 +1086,9 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
 
 
 @app.post("/classes", response_model=Class)
-def create_class(payload: CreateClassRequest) -> Class:
+def create_class(payload: CreateClassRequest, current_user: dict = Depends(get_current_user)) -> Class:
     class_id = f"class_{uuid.uuid4()}"
+    now = time.time()
     
     new_class = {
         "id": class_id,
@@ -1072,6 +1096,10 @@ def create_class(payload: CreateClassRequest) -> Class:
         "professor": payload.professor,
         "school": payload.school,
         "class_time": payload.class_time,
+        "creator_id": current_user["user_id"],
+        "creator_name": current_user.get("display_name", "Unknown"),
+        "created_at": now,
+        "updated_at": now,
     }
 
     if db is not None:
@@ -1086,5 +1114,21 @@ def get_classes() -> ClassListResponse:
          return ClassListResponse(classes=[])
     
     classes_cursor = db.classes.find()
-    classes = [Class(**c) for c in classes_cursor]
+    
+    classes = []
+    for c in classes_cursor:
+        # Count lectures for this class
+        lecture_count = db.lectures.count_documents({"class_id": c["id"]})
+        
+        classes.append(Class(
+            id=c["id"],
+            name=c["name"],
+            professor=c["professor"],
+            school=c["school"],
+            class_time=c["class_time"],
+            creator_name=c.get("creator_name"),
+            created_at=c.get("created_at"),
+            updated_at=c.get("updated_at"),
+            lecture_count=lecture_count
+        ))
     return ClassListResponse(classes=classes)

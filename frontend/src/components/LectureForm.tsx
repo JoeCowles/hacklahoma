@@ -25,8 +25,13 @@ export function LectureForm({ onSuccess, onCancel, defaultClassId }: LectureForm
     useEffect(() => {
         const fetchClasses = async () => {
             try {
-                const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
-                const response = await fetch(`${baseUrl}/classes`);
+                const token = localStorage.getItem('token');
+                const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+                const response = await fetch(`${baseUrl}/classes`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (response.ok) {
                     const data = await response.json();
                     setClasses(data.classes);
@@ -57,11 +62,13 @@ export function LectureForm({ onSuccess, onCancel, defaultClassId }: LectureForm
         }
 
         try {
-            const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+            const token = localStorage.getItem('token');
+            const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
             const response = await fetch(`${baseUrl}/lectures/create`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     class_id: selectedClassId,

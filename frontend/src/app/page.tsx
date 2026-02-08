@@ -7,32 +7,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LectureForm } from '../components/LectureForm';
 import { ClassForm } from '../components/ClassForm';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { LectureDetailsResponse, LectureSearchResponse } from '../types/lecture';
-
-interface Lecture {
-  id: string;
-  class_id: string;
-  date: string;
-  student_id: string;
-  class_name?: string | null;
-  professor?: string | null;
-  school?: string | null;
-  class_time?: string | null;
-}
-
-interface Class {
-  id: string;
-  name: string;
-  professor: string;
-  school: string;
-  class_time: string;
-}
+import type { LectureDetailsResponse, LectureSearchResponse, Lecture, Class } from '../types/lecture';
 
 interface User {
   user_id: string;
   email: string;
   display_name: string;
   credits: number;
+}
+
+function formatRelativeTime(timestamp?: number | null) {
+  if (!timestamp) return 'Never';
+  const now = Date.now() / 1000;
+  const diff = now - timestamp;
+
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 import { KeyConcepts, Concept, Flashcard, Quiz } from '../components/KeyConcepts';
@@ -798,27 +790,49 @@ function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: 
 function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => void }) {
   return (
     <motion.div
-      whileHover={{ y: -5 }}
+      whileHover={{ y: -5, scale: 1.02 }}
       onClick={onClick}
-      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer aspect-[3/2] flex flex-col justify-between min-h-[220px]"
+      className="glass-card rounded-3xl p-6 relative overflow-hidden group cursor-pointer aspect-[4/3] flex flex-col justify-between min-h-[260px] border border-white/10 hover:border-violet-500/50 transition-all shadow-xl hover:shadow-violet-500/10"
     >
-      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400`}>
-        Active
+      <div className="absolute top-0 right-0 px-4 py-2 rounded-bl-2xl text-[10px] font-bold uppercase tracking-widest bg-violet-500/20 text-violet-300 backdrop-blur-md border-l border-b border-white/10">
+        Lecture
       </div>
 
-      <div>
-        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">{lecture.class_name}</h3>
-        <p className="text-sm text-gray-400">{lecture.professor}</p>
-      </div>
-
-      <div className="flex items-center gap-4 text-xs font-medium text-white/60 border-t border-white/5 pt-4 mt-auto">
-        <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">calendar_today</span>
-          {lecture.date}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden ring-2 ring-white/5 shrink-0">
+             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lecture.creator_name || 'Anonymous'}`} alt="Creator" className="w-full h-full object-cover" />
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-violet-400 uppercase tracking-wider truncate">{lecture.creator_name || 'Anonymous'}</p>
+            <p className="text-[10px] text-gray-500 font-medium">Last updated {formatRelativeTime(lecture.updated_at)}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">schedule</span>
-          {lecture.class_time}
+
+        <div>
+          <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2 leading-tight">
+            {lecture.class_name}
+          </h3>
+          <p className="text-sm text-gray-400 font-medium flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm">person</span>
+            {lecture.professor}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs font-medium text-white/60 border-t border-white/5 pt-5 mt-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg">
+            <span className="material-symbols-outlined text-sm text-gray-400">calendar_today</span>
+            <span className="text-gray-300">{lecture.date}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg">
+             <span className="material-symbols-outlined text-sm text-gray-400">description</span>
+             <span className="text-gray-300">{lecture.chunk_count} Chunks</span>
+          </div>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-all">
+           <span className="material-symbols-outlined text-lg">arrow_forward</span>
         </div>
       </div>
     </motion.div>
@@ -828,27 +842,49 @@ function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => vo
 function ClassCard({ cls, onClick }: { cls: Class; onClick?: () => void }) {
   return (
     <motion.div
-      whileHover={{ y: -5 }}
+      whileHover={{ y: -5, scale: 1.02 }}
       onClick={onClick}
-      className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer aspect-[3/2] flex flex-col justify-between min-h-[220px]"
+      className="glass-card rounded-3xl p-6 relative overflow-hidden group cursor-pointer aspect-[4/3] flex flex-col justify-between min-h-[260px] border border-white/10 hover:border-fuchsia-500/50 transition-all shadow-xl hover:shadow-fuchsia-500/10"
     >
-      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-fuchsia-500/20 text-fuchsia-400`}>
-        Enrolled
+      <div className="absolute top-0 right-0 px-4 py-2 rounded-bl-2xl text-[10px] font-bold uppercase tracking-widest bg-fuchsia-500/20 text-fuchsia-300 backdrop-blur-md border-l border-b border-white/10">
+        Class
       </div>
 
-      <div>
-        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors line-clamp-2">{cls.name}</h3>
-        <p className="text-sm text-gray-400">{cls.professor}</p>
-      </div>
-
-      <div className="flex items-center gap-4 text-xs font-medium text-white/60 border-t border-white/5 pt-4 mt-auto">
-        <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">school</span>
-          {cls.school}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden ring-2 ring-white/5 shrink-0">
+             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${cls.creator_name || 'Professor'}`} alt="Creator" className="w-full h-full object-cover" />
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-fuchsia-400 uppercase tracking-wider truncate">{cls.creator_name || 'Anonymous'}</p>
+            <p className="text-[10px] text-gray-500 font-medium">Last updated {formatRelativeTime(cls.updated_at)}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">schedule</span>
-          {cls.class_time}
+
+        <div>
+          <h3 className="text-xl font-bold text-white mb-2 group-hover:text-fuchsia-300 transition-colors line-clamp-2 leading-tight">
+            {cls.name}
+          </h3>
+          <p className="text-sm text-gray-400 font-medium flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm">school</span>
+            {cls.school}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs font-medium text-white/60 border-t border-white/5 pt-5 mt-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg">
+            <span className="material-symbols-outlined text-sm text-gray-400">layers</span>
+            <span className="text-gray-300">{cls.lecture_count} Lectures</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg">
+             <span className="material-symbols-outlined text-sm text-gray-400">schedule</span>
+             <span className="text-gray-300">{cls.class_time}</span>
+          </div>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-400 group-hover:bg-fuchsia-500 group-hover:text-white transition-all">
+           <span className="material-symbols-outlined text-lg">arrow_forward</span>
         </div>
       </div>
     </motion.div>
