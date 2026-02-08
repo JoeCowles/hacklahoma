@@ -21,7 +21,7 @@ export interface Question {
     id: string;
     text: string;
     options: string[];
-    correct_option_index: int;
+    correct_option_index: number;
     explanation?: string;
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,7 +37,7 @@ interface User {
 
 import { KeyConcepts, Concept, Flashcard, Quiz } from '../components/KeyConcepts';
 
-export default function LectureAssistantDashboard() {
+function LectureAssistantDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
@@ -524,7 +524,7 @@ export default function LectureAssistantDashboard() {
                       placeholder="Search all lectures by class name or transcript..."
                       value={exploreQuery}
                       onChange={(e) => setExploreQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
                     />
                   </div>
                   <button
@@ -545,13 +545,13 @@ export default function LectureAssistantDashboard() {
                     <span className="material-symbols-outlined text-4xl text-gray-400 animate-spin">progress_activity</span>
                   </div>
                 ) : exploreQuery.trim() === '' ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                  <div className="flex flex-col items-center justify-center py-20 text-white">
                     <span className="material-symbols-outlined text-5xl mb-4">explore</span>
                     <p className="text-lg font-medium">Search lectures by class name or transcript</p>
                     <p className="text-sm mt-1">Type a query above and click Search</p>
                   </div>
                 ) : exploreResults.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                  <div className="flex flex-col items-center justify-center py-20 text-white">
                     <span className="material-symbols-outlined text-5xl mb-4">search_off</span>
                     <p className="text-lg font-medium">No lectures found for &quot;{exploreQuery}&quot;</p>
                   </div>
@@ -771,6 +771,14 @@ export default function LectureAssistantDashboard() {
   );
 }
 
+export default function LectureAssistantDashboard() {
+  return (
+    <Suspense fallback={null}>
+      <LectureAssistantDashboardContent />
+    </Suspense>
+  );
+}
+
 function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: string, label: string, onClick?: () => void }) {
   return (
     <button
@@ -803,7 +811,7 @@ function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => vo
         <p className="text-sm text-gray-400">{lecture.professor}</p>
       </div>
 
-      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4 mt-auto">
+      <div className="flex items-center gap-4 text-xs font-medium text-white/60 border-t border-white/5 pt-4 mt-auto">
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">calendar_today</span>
           {lecture.date}
@@ -833,7 +841,7 @@ function ClassCard({ cls, onClick }: { cls: Class; onClick?: () => void }) {
         <p className="text-sm text-gray-400">{cls.professor}</p>
       </div>
 
-      <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4 mt-auto">
+      <div className="flex items-center gap-4 text-xs font-medium text-white/60 border-t border-white/5 pt-4 mt-auto">
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">school</span>
           {cls.school}
