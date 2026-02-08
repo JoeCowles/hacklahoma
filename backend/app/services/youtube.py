@@ -1,22 +1,30 @@
 from typing import Any
 import json
-import google.generativeai as genai
+import re
+from google import genai
+from google.genai import types
 from app.config import settings
 
 class YouTubeClient:
     def __init__(self) -> None:
         if not settings.gemini_api_key:
             print("WARNING: Gemini API Key not configured. Search will fail.")
+            self.client = None
         else:
-            genai.configure(api_key=settings.gemini_api_key)
-            self.model = genai.GenerativeModel(settings.gemini_model)
+            self.client = genai.Client(
+                api_key=settings.gemini_api_key,
+                http_options={'api_version': 'v1beta'}
+            )
+            self.model_id = settings.gemini_model
 
     def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        if not self.client:
+            return []
+            
         results: list[dict[str, Any]] = []
         
         try:
             # Prompt Gemini to provide video links
-            # We ask for JSON to make parsing reliable
             prompt = f"""
             Find {limit} relevant and popular YouTube videos matching the query: "{query}".
             Return a pure JSON list of objects, where each object has:
@@ -26,10 +34,21 @@ class YouTubeClient:
             Return ONLY the JSON. No markdown, no explanations.
             """
             
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
             
-            # Clean up potential markdown code blocks
-            text = response.text.replace("```json", "").replace("```", "").strip()
+            # Use the same JSON parsing logic as in GeminiClient (implicitly via response.text and json.loads)
+            text = response.text.strip()
+            # Clean up potential markdown code blocks if the SDK didn't handle it
+            if text.startswith("```"):
+                text = re.sub(r"^```json\s*", "", text)
+                text = re.sub(r"```$", "", text)
+                text = text.strip()
             
             data = json.loads(text)
             
