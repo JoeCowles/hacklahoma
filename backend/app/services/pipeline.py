@@ -3,6 +3,7 @@ import time
 from typing import Any
 from app.services.gemini import GeminiClient
 from app.services.youtube import YouTubeClient
+from app.services.simulation import SimulationService
 from app.schemas import Concept, VideoResult
 from pathlib import Path
 
@@ -13,9 +14,10 @@ def load_prompt(name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 class PipelineService:
-    def __init__(self, gemini_client: GeminiClient, youtube_client: YouTubeClient):
+    def __init__(self, gemini_client: GeminiClient, youtube_client: YouTubeClient, simulation_service: SimulationService):
         self.gemini = gemini_client
         self.youtube = youtube_client
+        self.simulation = simulation_service
 
     async def process_chunk(self, text: str, previous_context: str, lecture_id: str) -> dict[str, Any]:
         prompt_template = load_prompt("pipeline_decision")
@@ -27,6 +29,7 @@ class PipelineService:
         try:
             # Async call to Gemini
             data = await self.gemini.generate_json_async(prompt)
+            print(f"DEBUG: Pipeline received actions: {[a.get('type') for a in (data or {}).get('actions', [])]}")
         except Exception as e:
             print(f"Pipeline Gemini Error: {e}")
             return {"error": str(e)}
@@ -76,14 +79,53 @@ class PipelineService:
                 concept = payload.get("concept")
                 desc = payload.get("description")
                 if concept:
-                    matching_concept = next((c for c in results["concepts"] if c["keyword"] == concept), None)
-                    concept_id = matching_concept["id"] if matching_concept else f"sim_{int(time.time()*1000)}"
+                    # Try to find the matching concept ID from this same chunk processing
+                    matching_concept = next((c for c in results["concepts"] if c["keyword"].lower() == concept.lower()), None)
+                    
+                    # If it's a new concept in this chunk, use its generated ID.
+                    # Otherwise, generate a deterministic-ish ID based on keyword for the frontend to match.
+                    if matching_concept:
+                        concept_id = matching_concept["id"]
+                    else:
+                        # Fallback to a keyword-based ID that the frontend can use to link
+                        import hashlib
+                        slug = concept.lower().replace(" ", "_")
+                        concept_id = f"sim_link_{slug}"
+
+                    # Generate simulation code
+                    simulation_code = await self.simulation.generate_simulation(
+                        concept=concept,
+                        description=desc,
+                        context=f"{previous_context}\n\nRecent Transcript: {text}"
+                    )
 
                     results["simulations"].append({
                         "concept": concept,
                         "concept_id": concept_id,
                         "description": desc,
-                        "status": "suggested"
+                        "status": "ready",
+                        "code": simulation_code
                     })
+                    print(f"DEBUG: Generated simulation for '{concept}' (ID: {concept_id})")
+
+        # Fallback: Ensure every concept extracted has a corresponding simulation
+        extracted_keywords = [c["keyword"] for c in results["concepts"]]
+        simulated_keywords = [s["concept"] for s in results["simulations"]]
+        
+        for concept_obj in results["concepts"]:
+            if concept_obj["keyword"] not in simulated_keywords:
+                print(f"DEBUG: Fallback - Triggering mandatory simulation for '{concept_obj['keyword']}'")
+                simulation_code = await self.simulation.generate_simulation(
+                    concept=concept_obj["keyword"],
+                    description=f"Interactive visualization of {concept_obj['keyword']}",
+                    context=f"{previous_context}\n\nRecent Transcript: {text}"
+                )
+                results["simulations"].append({
+                    "concept": concept_obj["keyword"],
+                    "concept_id": concept_obj["id"],
+                    "description": f"Mandatory simulation for {concept_obj['keyword']}",
+                    "status": "ready",
+                    "code": simulation_code
+                })
 
         return results
