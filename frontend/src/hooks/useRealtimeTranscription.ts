@@ -21,12 +21,14 @@ interface UseRealtimeTranscriptionReturn {
     simulations: any[];
     flashcards: any[];
     quizzes: any[];
+    referenceTexts: any[];
     setConcepts: React.Dispatch<React.SetStateAction<any[]>>;
     setVideos: React.Dispatch<React.SetStateAction<any[]>>;
     setSimulations: React.Dispatch<React.SetStateAction<any[]>>;
     setTranscripts: React.Dispatch<React.SetStateAction<TranscriptionItem[]>>;
     setFlashcards: React.Dispatch<React.SetStateAction<any[]>>;
     setQuizzes: React.Dispatch<React.SetStateAction<any[]>>;
+    setReferenceTexts: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const ELEVENLABS_REALTIME_URL = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
@@ -91,6 +93,7 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
     const [simulations, setSimulations] = useState<any[]>([]);
     const [flashcards, setFlashcards] = useState<any[]>([]);
     const [quizzes, setQuizzes] = useState<any[]>([]);
+    const [referenceTexts, setReferenceTexts] = useState<any[]>([]);
 
     const socketRef = useRef<WebSocket | null>(null);
     const backendSocketRef = useRef<WebSocket | null>(null);
@@ -215,6 +218,18 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
                                 return next;
                             });
                         }
+                        if (results.reference_texts) {
+                            setReferenceTexts(prev => {
+                                const next = [...prev];
+                                results.reference_texts.forEach((newRef: any) => {
+                                    // Check if URL already exists to avoid duplicates
+                                    if (!next.some(r => r.url === newRef.url)) {
+                                        next.push(newRef);
+                                    }
+                                });
+                                return next;
+                            });
+                        }
                     }
                 } catch (e) {
                     console.error("Failed to parse backend message", e);
@@ -299,6 +314,11 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
 
         setError(null);
         setIsPaused(false);
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setError("Microphone access is not available. Ensure you are using HTTPS or localhost (Secure Context).");
+            return;
+        }
 
         try {
             const token = await fetchRealtimeToken();
@@ -458,11 +478,13 @@ export function useRealtimeTranscription(lectureId: string | null): UseRealtimeT
         simulations,
         flashcards,
         quizzes,
+        referenceTexts,
         setConcepts,
         setVideos,
         setSimulations,
         setTranscripts,
         setFlashcards,
-        setQuizzes
+        setQuizzes,
+        setReferenceTexts
     };
 }

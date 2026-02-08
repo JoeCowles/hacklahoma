@@ -54,6 +54,7 @@ from .services.auth import (
 )
 from .services.elevenlabs import ElevenLabsClient
 from .services.gemini import GeminiClient
+from .services.google_search import GoogleSearchService
 from .services.pipeline import PipelineService
 from .services.quiz import QuizService
 from .services.simulation import SimulationService
@@ -110,6 +111,7 @@ simulation_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_
 quiz_client = GeminiClient(settings.gemini_api_key or "", settings.gemini_quiz_model)
 elevenlabs_client = ElevenLabsClient(settings.elevenlabs_api_key or "")
 youtube_client = YouTubeClient()
+google_search_service = GoogleSearchService(gemini_client)
 simulation_service = SimulationService(simulation_client)
 quiz_service = QuizService(quiz_client)
 pipeline_service = PipelineService(gemini_client, youtube_client, simulation_service)
@@ -366,6 +368,55 @@ async def run_video_search_background(websocket: WebSocket, youtube_client: YouT
     except Exception as e:
         print(f"Error in background video search task: {e}")
 
+async def run_google_search_background(websocket: WebSocket, google_search_service: GoogleSearchService, text_request: dict, lecture_id: str):
+    try:
+        query = text_request.get("query")
+        if not query:
+            return
+
+        print(f"DEBUG: Starting background Google search for: {query}")
+        # Add "LibreTexts" to query to prioritize high-quality results
+        rich_query = f"{query} educational reference LibreTexts"
+        reference_results = await google_search_service.search_references(rich_query)
+        
+        for r in reference_results:
+            r["context_concept"] = text_request.get("context_concept")
+            r["context_concept_id"] = text_request.get("context_concept_id")
+
+        if reference_results:
+             # Send update to client
+            try:
+                await websocket.send_json({
+                    "type": "pipeline_result",
+                    "lecture_id": lecture_id,
+                    "results": {
+                        "concepts": [],
+                        "videos": [],
+                        "simulations": [],
+                        "quizzes": [],
+                        "flashcards": [],
+                        "reference_texts": reference_results
+                    }
+                })
+                print(f"DEBUG: Background Google search for {query} completed and sent.")
+                
+                # Persist reference results
+                if db is not None:
+                    ref_docs = []
+                    for r in reference_results:
+                        r_doc = r.copy()
+                        r_doc["lecture_id"] = lecture_id
+                        r_doc["timestamp"] = time.time()
+                        ref_docs.append(r_doc)
+                    if ref_docs:
+                        db.references.insert_many(ref_docs)
+
+            except Exception as e:
+                print(f"Could not send background Google search result: {e}")
+
+    except Exception as e:
+        print(f"Error in background Google search task: {e}")
+
 async def run_chunk_simulation_background(websocket: WebSocket, simulation_service: SimulationService, chunk_text: str, lecture_id: str, chunk_id: str, previous_context: str):
     # Send pending state immediately to UI
     try:
@@ -560,6 +611,15 @@ async def process_transcript_message(websocket: WebSocket, message: dict):
                 websocket,
                 youtube_client,
                 vr,
+                lecture_id
+            ))
+
+        # Handle background google search
+        for tr in result.get("text_reference_requests", []):
+            asyncio.create_task(run_google_search_background(
+                websocket,
+                google_search_service,
+                tr,
                 lecture_id
             ))
         
@@ -901,12 +961,17 @@ def get_lecture_details(lecture_id: str) -> LectureDetailsResponse:
     transcripts_cursor = db.transcripts.find({"lecture_id": lecture_id}).sort("timestamp", 1)
     transcripts = [TranscriptItem(**t) for t in transcripts_cursor]
 
+    # 6. Get Reference Texts
+    references_cursor = db.references.find({"lecture_id": lecture_id})
+    references = [ReferenceText(**r) for r in references_cursor]
+
     return LectureDetailsResponse(
         lecture=lecture,
         concepts=concepts,
         videos=videos,
         simulations=simulations,
-        transcripts=transcripts
+        transcripts=transcripts,
+        references=references
     )
 
 

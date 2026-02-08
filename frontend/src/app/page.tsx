@@ -93,10 +93,12 @@ export default function LectureAssistantDashboard() {
     simulations,
     flashcards,
     quizzes,
+    referenceTexts,
     setConcepts,
     setVideos,
     setSimulations,
-    setTranscripts
+    setTranscripts,
+    setReferenceTexts
   } = useRealtimeTranscription(currentLecture?.id || null);
 
   // Map backend concepts to UI format
@@ -174,6 +176,11 @@ export default function LectureAssistantDashboard() {
         setConcepts(data.concepts);
         setVideos(data.videos);
         setSimulations(data.simulations);
+        if (data.references) {
+          setReferenceTexts(data.references);
+        } else {
+          setReferenceTexts([]);
+        }
         if (data.transcripts) {
           setTranscripts(data.transcripts);
         } else {
@@ -219,6 +226,13 @@ export default function LectureAssistantDashboard() {
     ? videos.filter(v =>
       v.context_concept_id === selectedConcept.id ||
       v.context_concept?.toLowerCase() === selectedConcept.keyword.toLowerCase()
+    )
+    : [];
+
+  const relatedReferences = selectedConcept
+    ? referenceTexts.filter(r =>
+      r.context_concept_id === selectedConcept.id ||
+      r.context_concept?.toLowerCase() === selectedConcept.keyword.toLowerCase()
     )
     : [];
 
@@ -554,6 +568,35 @@ export default function LectureAssistantDashboard() {
                               <p className="text-xs font-bold text-gray-200 px-1 line-clamp-1">
                                 {video.title}
                               </p>
+                            </div>
+                          ))}
+
+                          {/* Reference Texts */}
+                          {relatedReferences.map((ref, i) => (
+                            <div key={i} className="flex flex-col gap-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[12px]">description</span>
+                                  Reading Material
+                                </span>
+                              </div>
+                              <a 
+                                href={ref.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="glass-panel p-4 rounded-xl border-white/10 hover:border-violet-500/50 transition-all flex flex-col gap-2 group"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <h5 className="font-bold text-sm text-white group-hover:text-violet-300 transition-colors line-clamp-1">{ref.title}</h5>
+                                  <span className="material-symbols-outlined text-sm text-gray-400">open_in_new</span>
+                                </div>
+                                <p className="text-xs text-gray-400 line-clamp-2">{ref.snippet}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className="text-[10px] font-medium text-violet-400 px-1.5 py-0.5 bg-violet-500/10 rounded">
+                                    {ref.source || "Web Resource"}
+                                  </span>
+                                </div>
+                              </a>
                             </div>
                           ))}
                         </div>

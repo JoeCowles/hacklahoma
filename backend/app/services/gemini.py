@@ -30,7 +30,7 @@ class GeminiClient:
                     ]
                 )
             )
-            return _parse_json_from_text(response.text)
+            return parse_json_from_text(response.text)
         except Exception as e:
             print(f"Gemini JSON Error: {e}")
             return None
@@ -51,7 +51,7 @@ class GeminiClient:
                     ]
                 )
             )
-            return _parse_json_from_text(response.text)
+            return parse_json_from_text(response.text)
         except Exception as e:
             print(f"Gemini Async JSON Error: {e}")
             return None
@@ -98,8 +98,28 @@ class GeminiClient:
             print(f"Gemini Async Text Error: {e}")
             return f"Error: {str(e)}"
 
+    async def search_google_async(self, prompt: str) -> Any:
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearchRetrieval())],
+                    safety_settings=[
+                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+                    ]
+                )
+            )
+            return response
+        except Exception as e:
+            print(f"Gemini Search Error: {e}")
+            return None
 
-def _parse_json_from_text(text: str) -> Any:
+
+def parse_json_from_text(text: str) -> Any:
     text = text.strip()
     if not text:
         return None

@@ -193,10 +193,18 @@ class TranscriptItem(BaseModel):
     type: str # 'partial' | 'committed'
 
 
+class ReferenceText(BaseModel):
+    title: str
+    url: str
+    snippet: str | None = None
+    source: str | None = None
+
+
 class LectureDetailsResponse(BaseModel):
     lecture: Lecture
     concepts: list[Concept]
     videos: list[VideoResult]
     simulations: list[AnimationResponse]
     transcripts: list[TranscriptItem]
+    references: list[ReferenceText] = []
 
