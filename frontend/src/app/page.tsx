@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { TranscriptionCard } from '../components/TranscriptionCard';
 import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRealtimeTranscription } from '../hooks/useRealtimeTranscription';
 import { LectureForm } from '../components/LectureForm';
 
 interface Lecture {
@@ -20,13 +19,7 @@ interface Lecture {
 
 import { KeyConcepts, Concept } from '../components/KeyConcepts';
 
-const lecturesData = [
-  { id: 1, title: "Quantum Physics 101", instructor: "Prof. Julian Barnes", time: "10:30 AM", duration: "1h 30m", date: "Today", status: "Live" },
-  { id: 2, title: "Introduction to Linear Algebra", instructor: "Dr. Sarah Chen", time: "02:00 PM", duration: "1h 15m", date: "Today", status: "Upcoming" },
-  { id: 3, title: "History of Renaissance Art", instructor: "Prof. Michael Rossi", time: "09:00 AM", duration: "55m", date: "Yesterday", status: "Completed" },
-  { id: 4, title: "Advanced Algorithms", instructor: "Dr. Alan Turing", time: "11:00 AM", duration: "1h 30m", date: "Yesterday", status: "Completed" },
-  { id: 5, title: "Organic Chemistry II", instructor: "Prof. Marie Curie", time: "01:00 PM", duration: "2h 00m", date: "Feb 5, 2026", status: "Completed" },
-];
+
 
 export default function LectureAssistantDashboard() {
   const { isRecording, transcripts, error, startRecording, stopRecording, concepts, videos, simulations } = useRealtimeTranscription();
@@ -102,7 +95,7 @@ export default function LectureAssistantDashboard() {
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground relative selection:bg-fuchsia-500/30 h-full">
 
       {/* Animated Background Elements */}
-      <div className="absolute inset-0 pointer-events-none h-full">
+      <div className="fixed inset-0 pointer-events-none h-full w-full overflow-hidden">
         <motion.div
           animate={{
             opacity: [0.2, 0.3, 0.2]

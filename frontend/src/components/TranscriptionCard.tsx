@@ -254,7 +254,7 @@ function TranscriptItem({ item }: { item: TranscriptionItem }) {
       animate={{ opacity: 1, x: 0 }}
       className="flex gap-8 group"
     >
-      <span className="text-xs font-mono text-primary/80 font-semibold pt-2 shrink-0 w-20 text-right group-hover:text-primary transition-colors">
+      <span className="text-xs font-mono text-gray-400 font-semibold pt-2 shrink-0 w-20 text-right group-hover:text-white transition-colors">
         {item.time}
       </span>
       <p className={cn(
