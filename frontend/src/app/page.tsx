@@ -31,7 +31,38 @@ import { KeyConcepts, Concept, Flashcard, Quiz } from '../components/KeyConcepts
 const lecturesData = [];
 
 export default function LectureAssistantDashboard() {
+<<<<<<< HEAD
   const { isRecording, isPaused, transcripts, error, startRecording, pauseRecording, endSession, concepts, videos, simulations, flashcards, quizzes } = useRealtimeTranscription();
+=======
+
+
+
+
+  const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
+  const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('classes');
+  const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
+  const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
+  const [isClassFormOpen, setIsClassFormOpen] = useState(false);
+
+  const {
+    isRecording,
+    transcripts,
+    error,
+    startRecording,
+    stopRecording,
+    concepts,
+    videos,
+    simulations,
+    setConcepts,
+    setVideos,
+    setSimulations,
+    setTranscripts
+  } = useRealtimeTranscription(currentLecture?.id || null);
+>>>>>>> graysen/persistant-lectures
 
   // Map backend concepts to UI format
   // The hook returns concepts as any[], we cast/map them to our Concept interface
@@ -43,6 +74,7 @@ export default function LectureAssistantDashboard() {
     source_chunk_id: c.source_chunk_id
   }));
 
+<<<<<<< HEAD
   const allFlashcards: Flashcard[] = flashcards.map((f: any) => ({
     id: f.id,
     concept_id: f.concept_id,
@@ -65,6 +97,8 @@ export default function LectureAssistantDashboard() {
   const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
   const [isClassFormOpen, setIsClassFormOpen] = useState(false);
 
+=======
+>>>>>>> graysen/persistant-lectures
   const fetchLectures = async () => {
     try {
       const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
@@ -88,6 +122,28 @@ export default function LectureAssistantDashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch classes:", error);
+    }
+  };
+
+  const loadLectureDetails = async (lectureId: string) => {
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/lectures/${lectureId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentLecture(data.lecture);
+        setConcepts(data.concepts);
+        setVideos(data.videos);
+        setSimulations(data.simulations);
+        if (data.transcripts) {
+          setTranscripts(data.transcripts);
+        } else {
+          setTranscripts([]);
+        }
+        setActiveSection('live-learn');
+      }
+    } catch (error) {
+      console.error("Failed to fetch lecture details:", error);
     }
   };
 
@@ -175,12 +231,7 @@ export default function LectureAssistantDashboard() {
             label="Classes"
             onClick={() => handleNavigation('classes')}
           />
-          <SidebarItem
-            active={activeSection === 'lectures'}
-            icon="class"
-            label="Lectures"
-            onClick={() => handleNavigation('lectures')}
-          />
+
           <SidebarItem active={false} icon="analytics" label="Analytics" />
           <SidebarItem active={false} icon="settings" label="Settings" />
         </div>
@@ -231,9 +282,20 @@ export default function LectureAssistantDashboard() {
               </motion.div>
             )}
             {activeSection === 'lectures' && (
-              <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
-                My Lectures
-              </motion.h2>
+              <div className="flex items-center gap-4">
+                {selectedClass && (
+                  <button
+                    onClick={() => setSelectedClass(null)}
+                    className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-lg">arrow_back</span>
+                    Back to All
+                  </button>
+                )}
+                <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
+                  {selectedClass ? `${selectedClass.name} Lectures` : "My Lectures"}
+                </motion.h2>
+              </div>
             )}
             {activeSection === 'classes' && (
               <motion.h2 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-white tracking-tight">
@@ -270,17 +332,17 @@ export default function LectureAssistantDashboard() {
                   </div>
                   <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Lecture</p>
                 </motion.div>
-
-                {lectures.map((lecture) => (
-                  <LectureCard
-                    key={lecture.id}
-                    lecture={lecture}
-                    onClick={() => {
-                      setCurrentLecture(lecture);
-                      setActiveSection('live-learn');
-                    }}
-                  />
-                ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {lectures
+                    .filter(l => !selectedClass || l.class_id === selectedClass.id)
+                    .map((lecture) => (
+                      <LectureCard
+                        key={lecture.id}
+                        lecture={lecture}
+                        onClick={() => loadLectureDetails(lecture.id)}
+                      />
+                    ))}
+                </div>
               </div>
             </div>
           )}
@@ -300,10 +362,14 @@ export default function LectureAssistantDashboard() {
                   </div>
                   <p className="font-bold text-lg text-gray-400 group-hover:text-violet-300 transition-colors">Add New Class</p>
                 </motion.div>
-
-                {classes.map((cls) => (
-                  <ClassCard key={cls.id} cls={cls} />
-                ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {classes.map((cls) => (
+                    <ClassCard key={cls.id} cls={cls} onClick={() => {
+                      setSelectedClass(cls);
+                      setActiveSection('lectures');
+                    }} />
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -311,6 +377,7 @@ export default function LectureAssistantDashboard() {
           <AnimatePresence>
             {isLectureFormOpen && (
               <LectureForm
+                defaultClassId={selectedClass?.id}
                 onSuccess={() => {
                   setIsLectureFormOpen(false);
                   fetchLectures();
@@ -462,9 +529,9 @@ export default function LectureAssistantDashboard() {
           )
           }
 
-        </div >
-      </main >
-    </div >
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -512,10 +579,11 @@ function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => vo
   )
 }
 
-function ClassCard({ cls }: { cls: Class }) {
+function ClassCard({ cls, onClick }: { cls: Class; onClick?: () => void }) {
   return (
     <motion.div
       whileHover={{ y: -5 }}
+      onClick={onClick}
       className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
     >
       <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-fuchsia-500/20 text-fuchsia-400`}>

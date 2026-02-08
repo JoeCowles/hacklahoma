@@ -187,22 +187,16 @@ class Quiz(BaseModel):
     status: str = "pending" # pending, ready, error
 
 
-class CreateLectureRequest(BaseModel):
-    professor: str
-    school: str
-    class_name: str
-    class_time: str
-    student_id: str
+class TranscriptItem(BaseModel):
+    time: str
+    text: str
+    type: str # 'partial' | 'committed'
 
 
-class Lecture(BaseModel):
-    id: str
-    professor: str
-    school: str
-    class_name: str
-    class_time: str
-    student_id: str
+class LectureDetailsResponse(BaseModel):
+    lecture: Lecture
+    concepts: list[Concept]
+    videos: list[VideoResult]
+    simulations: list[AnimationResponse]
+    transcripts: list[TranscriptItem]
 
-
-class LectureListResponse(BaseModel):
-    lectures: list[Lecture]
