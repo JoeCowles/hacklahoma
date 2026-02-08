@@ -91,20 +91,21 @@ class ShareResponse(BaseModel):
 
 
 class CreateLectureRequest(BaseModel):
-    professor: str
-    school: str
-    class_name: str
-    class_time: str
+    class_id: str
+    date: str
     student_id: str
 
 
 class Lecture(BaseModel):
     id: str
-    professor: str
-    school: str
-    class_name: str
-    class_time: str
+    class_id: str
+    date: str
     student_id: str
+    # These fields are populated by the backend from the Class
+    class_name: str | None = None
+    professor: str | None = None
+    school: str | None = None
+    class_time: str | None = None
 
 
 class LectureListResponse(BaseModel):

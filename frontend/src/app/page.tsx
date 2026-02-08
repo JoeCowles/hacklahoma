@@ -9,11 +9,13 @@ import { ClassForm } from '../components/ClassForm';
 
 interface Lecture {
   id: string;
-  professor: string;
-  school: string;
-  class_name: string;
-  class_time: string;
+  class_id: string;
+  date: string;
   student_id: string;
+  class_name?: string;
+  professor?: string;
+  school?: string;
+  class_time?: string;
 }
 
 interface Class {
@@ -45,6 +47,7 @@ export default function LectureAssistantDashboard() {
   const [activeSection, setActiveSection] = useState<'live-learn' | 'lectures' | 'classes'>('live-learn');
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
   const [isLectureFormOpen, setIsLectureFormOpen] = useState(false);
   const [isClassFormOpen, setIsClassFormOpen] = useState(false);
 
@@ -194,7 +197,16 @@ export default function LectureAssistantDashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-5"
               >
-                <h2 className="text-2xl font-bold text-white tracking-tight">Quantum Physics 101</h2>
+                <button
+                  onClick={() => setActiveSection('lectures')}
+                  className="group flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all"
+                >
+                  <h2 className="text-2xl font-bold text-white tracking-tight group-hover:text-violet-300 transition-colors">
+                    {currentLecture ? `${currentLecture.class_name}` : "Select a Lecture"}
+                  </h2>
+                  <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">expand_more</span>
+                </button>
+
                 <div className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-2.5 shadow-sm shadow-red-500/5">
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -246,7 +258,14 @@ export default function LectureAssistantDashboard() {
                 </motion.div>
 
                 {lectures.map((lecture) => (
-                  <LectureCard key={lecture.id} lecture={lecture} />
+                  <LectureCard
+                    key={lecture.id}
+                    lecture={lecture}
+                    onClick={() => {
+                      setCurrentLecture(lecture);
+                      setActiveSection('live-learn');
+                    }}
+                  />
                 ))}
               </div>
             </div>
@@ -445,10 +464,11 @@ function SidebarItem({ active, icon, label, onClick }: { active: boolean, icon: 
   )
 }
 
-function LectureCard({ lecture }: { lecture: Lecture }) {
+function LectureCard({ lecture, onClick }: { lecture: Lecture; onClick: () => void }) {
   return (
     <motion.div
       whileHover={{ y: -5 }}
+      onClick={onClick}
       className="glass-card rounded-2xl p-6 relative overflow-hidden group cursor-pointer"
     >
       <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400`}>
@@ -460,8 +480,8 @@ function LectureCard({ lecture }: { lecture: Lecture }) {
 
       <div className="flex items-center gap-4 text-xs font-medium text-gray-500 border-t border-white/5 pt-4">
         <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">school</span>
-          {lecture.school}
+          <span className="material-symbols-outlined text-sm">calendar_today</span>
+          {lecture.date}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-sm">schedule</span>
